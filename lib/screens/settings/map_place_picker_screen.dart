@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../models/saved_place.dart';
+import '../../services/location_service.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/notification_banner.dart';
@@ -53,6 +54,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
 
   // OpenStreetMap interactive state
   bool _isDragging = false;
+  bool _isLocating = false;
   int _zoomLevel = 14; // Street & building level OpenStreetMap zoom (11 to 18)
   OsmMapStyle _activeMapStyle = OsmMapStyle.osmStandard;
   Size _viewportSize = Size.zero;
@@ -198,14 +200,54 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
     final newTileX = currentTileX - (delta.dx / 256.0);
     final newTileY = currentTileY - (delta.dy / 256.0);
 
-    final newLng = _tileXToLng(newTileX, _zoomLevel).clamp(125.4000, 125.7500);
-    final newLat = _tileYToLat(newTileY, _zoomLevel).clamp(6.9500, 7.2000);
+    final newLng = _tileXToLng(newTileX, _zoomLevel).clamp(-180.0000, 180.0000);
+    final newLat = _tileYToLat(newTileY, _zoomLevel).clamp(-85.0000, 85.0000);
 
     setState(() {
       _longitude = double.parse(newLng.toStringAsFixed(5));
       _latitude = double.parse(newLat.toStringAsFixed(5));
       _address = _findNearestAddress(_latitude, _longitude);
     });
+  }
+
+  Future<void> _locateUserCurrentPosition() async {
+    if (_isLocating) return;
+
+    setState(() {
+      _isLocating = true;
+    });
+
+    try {
+      final loc = await LocationService.getCurrentLocation();
+      if (!mounted) return;
+
+      if (loc.error != null) {
+        NotificationBanner.showInfo(context, loc.error!);
+      } else {
+        setState(() {
+          _latitude = double.parse(loc.lat.toStringAsFixed(5));
+          _longitude = double.parse(loc.lng.toStringAsFixed(5));
+          _address = _findNearestAddress(_latitude, _longitude);
+          if (_zoomLevel < 15) {
+            _zoomLevel = 16;
+          }
+        });
+        NotificationBanner.showSuccess(
+          context,
+          'GPS location detected: ${_latitude.toStringAsFixed(4)}° N, ${_longitude.toStringAsFixed(4)}° E',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationBanner.showError(context, 'Location access error: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+        });
+      }
+    }
   }
 
   void _changeZoom(int delta) {
@@ -258,7 +300,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
       return 'Davao Coastal / Port Zone, Davao City';
     }
 
-    return '${lat.toStringAsFixed(4)}° N, ${lng.toStringAsFixed(4)}° E • Davao City Commuter Zone';
+    return 'Current GPS Location (${lat.toStringAsFixed(4)}° N, ${lng.toStringAsFixed(4)}° E)';
   }
 
   void _savePlace() {
@@ -620,10 +662,65 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                     height: 36,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _davaoPresets.length,
+                      itemCount: _davaoPresets.length + 1,
                       separatorBuilder: (context, index) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
-                        final preset = _davaoPresets[index];
+                        if (index == 0) {
+                          return InkWell(
+                            onTap: _locateUserCurrentPosition,
+                            borderRadius: BorderRadius.circular(18),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: _isLocating ? AppColors.surfaceMint : Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: AppColors.mainGreen,
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.mainGreen.withAlpha(25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_isLocating)
+                                    const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.mainGreen,
+                                      ),
+                                    )
+                                  else
+                                    const Icon(
+                                      Icons.near_me_rounded,
+                                      size: 13,
+                                      color: AppColors.mainGreen,
+                                    ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _isLocating ? 'Locating...' : 'My Location',
+                                    style: const TextStyle(
+                                      color: AppColors.deepGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        final preset = _davaoPresets[index - 1];
                         final isCurrent = (_latitude - preset.lat).abs() < 0.005 && (_longitude - preset.lng).abs() < 0.005;
 
                         return InkWell(
@@ -683,10 +780,10 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
               children: [
                 // Re-Center / GPS Location Button
                 _GoogleMapActionButton(
-                  icon: Icons.my_location_rounded,
-                  tooltip: 'Center Downtown',
-                  iconColor: AppColors.mainGreen,
-                  onTap: () => _applyPreset(_davaoPresets[0]),
+                  icon: _isLocating ? Icons.hourglass_top_rounded : Icons.my_location_rounded,
+                  tooltip: 'My Current Location (GPS)',
+                  iconColor: _isLocating ? AppColors.coral : AppColors.mainGreen,
+                  onTap: _locateUserCurrentPosition,
                 ),
                 const SizedBox(height: 10),
 
