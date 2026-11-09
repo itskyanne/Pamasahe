@@ -1,0 +1,221 @@
+<mxfile host="app.diagrams.net" agent="Pamasahe">
+  <diagram id="pamasahe-use-case" name="Pamasahe Use Case Diagram">
+    <mxGraphModel dx="2764" dy="1557" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="actor_commuter" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=12;" value="Commuter&#xa;(Student / Senior / PWD)" vertex="1">
+          <mxGeometry height="80" width="40" x="60" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="node_central" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;fillColor=#e1f5fe;strokeColor=#0288d1;strokeWidth=2;" value="Pamasahe Commuter&#xa;Module" vertex="1">
+          <mxGeometry height="80" width="160" x="190" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_actor" edge="1" parent="1" source="actor_commuter" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" target="node_central">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_dashboard" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Commute Dashboard&#xa;Management" vertex="1">
+          <mxGeometry height="70" width="150" x="460" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_dash" edge="1" parent="1" source="node_central" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_dashboard" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-10" connectable="0" parent="e_c_dash" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.3057" y="4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_dash_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="View Weekly Total&#xa;&amp; 7-Day Bar Chart" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e_d1" edge="1" parent="1" source="mod_dashboard" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_dash_1" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-9" connectable="0" parent="e_d1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.1038" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_dash_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="View Recent&#xa;Trips Preview" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="e_d2" edge="1" parent="1" source="mod_dashboard" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_dash_2" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-8" connectable="0" parent="e_d2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.127" y="2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_dash_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Quick Log&#xa;Trip Action" vertex="1">
+          <mxGeometry height="60" width="130" x="890" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e_d3" edge="1" parent="1" source="uc_dash_3" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_dashboard" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_routes" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Route Notebook&#xa;Management" vertex="1">
+          <mxGeometry height="70" width="150" x="460" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_routes" edge="1" parent="1" source="node_central" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_routes" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-11" connectable="0" parent="e_c_routes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="0.1181" y="4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_route_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Browse Saved&#xa;Routes &amp; Fares" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="e_r1" edge="1" parent="1" source="mod_routes" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_route_1" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-7" connectable="0" parent="e_r1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="0.101" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_route_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Create Multi-Step&#xa;Commute Route" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="e_r2" edge="1" parent="1" source="mod_routes" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_route_2" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-6" connectable="0" parent="e_r2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.1633" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_route_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Reverse Route&#xa;(Return Commute)" vertex="1">
+          <mxGeometry height="60" width="140" x="890" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="e_r3" edge="1" parent="1" source="uc_route_3" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_routes" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_route_4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Compare Routes&#xa;(Cheapest / Fastest)" vertex="1">
+          <mxGeometry height="60" width="140" x="890" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="e_r4" edge="1" parent="1" source="uc_route_4" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_routes" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_lines" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Transport Lines&#xa;Catalog" vertex="1">
+          <mxGeometry height="70" width="150" x="460" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_lines" edge="1" parent="1" source="node_central" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_lines" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-12" connectable="0" parent="e_c_lines" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="0.1119" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_line_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Browse Public&#xa;Transit Lines" vertex="1">
+          <mxGeometry height="60" width="140" x="700" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="e_l1" edge="1" parent="1" source="mod_lines" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_line_1" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-5" connectable="0" parent="e_l1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.0145" y="2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_line_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Filter Vehicle Mode&#xa;&amp; Search Name" vertex="1">
+          <mxGeometry height="60" width="140" x="890" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="e_l2" edge="1" parent="1" source="uc_line_2" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_lines" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_line_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Waypoint A/B Stops&#xa;Fare Calculation" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="e_l3" edge="1" parent="1" source="uc_line_3" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_lines" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_line_4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Use Transit Line&#xa;in Custom Route" vertex="1">
+          <mxGeometry height="60" width="140" x="890" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="e_l4" edge="1" parent="1" source="uc_line_4" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_lines" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_history" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Trip Logging &amp;&#xa;History Management" vertex="1">
+          <mxGeometry height="70" width="150" x="460" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_hist" edge="1" parent="1" source="node_central" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_history" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-13" connectable="0" parent="e_c_hist" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.1147" y="6" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_hist_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Log Completed&#xa;Commute Trip" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="e_h1" edge="1" parent="1" source="mod_history" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_hist_1" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-4" connectable="0" parent="e_h1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="0.011" y="2" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_hist_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="View Chronological&#xa;Trip History" vertex="1">
+          <mxGeometry height="60" width="140" x="690" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="e_h2" edge="1" parent="1" source="mod_history" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_hist_2" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-3" connectable="0" parent="e_h2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.2643" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_hist_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Spending Summary&#xa;&amp; Concession Savings" vertex="1">
+          <mxGeometry height="60" width="140" x="890" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="e_h3" edge="1" parent="1" source="uc_hist_3" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_history" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_settings" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Settings &amp; Places&#xa;Management" vertex="1">
+          <mxGeometry height="70" width="150" x="460" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_set" edge="1" parent="1" source="node_central" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="mod_settings" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-14" connectable="0" parent="e_c_set" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.394" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_set_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Configure Concession&#xa;(Student/Senior/PWD)" vertex="1">
+          <mxGeometry height="60" width="140" x="700" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s1" edge="1" parent="1" source="mod_settings" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_set_1" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-2" connectable="0" parent="e_s1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.109" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_set_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Manage Saved&#xa;Places List" vertex="1">
+          <mxGeometry height="60" width="140" x="710" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s2" edge="1" parent="1" source="mod_settings" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_set_2" value="&lt;include&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="52Qb1MQOTco_nTdT0-2P-1" connectable="0" parent="e_s2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=10;" value="Include" vertex="1">
+          <mxGeometry relative="1" x="-0.22" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_set_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" value="Pin Place on&#xa;Draggable Map" vertex="1">
+          <mxGeometry height="60" width="140" x="930" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s3" edge="1" parent="1" source="uc_set_3" style="html=1;dashed=1;endArrow=open;endFill=0;fontSize=10;" target="uc_set_2" value="extends">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
