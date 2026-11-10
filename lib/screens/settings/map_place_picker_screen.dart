@@ -492,7 +492,10 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                     children: [
                       Positioned(
                         top: pinY - 80,
-                        child: Column(
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // 1. Floating Category Callout Badge
@@ -575,8 +578,9 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                           ],
                         ),
                       ),
-                    ],
-                  );
+                    ),
+                  ],
+                );
                 },
               ),
             ),

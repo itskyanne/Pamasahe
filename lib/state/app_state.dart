@@ -241,7 +241,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Calculations for Spending and Charts
+  // Calculations for Spending, Budgets, and Charts
+  double get weeklyBudget => 250.00;
+  double get monthlyBudget => 1000.00;
+
   double get weeklySpending {
     // Current week total (sum of trips in Nov 2 - Nov 8 week)
     return _trips.fold(0.0, (sum, trip) => sum + trip.amount);
@@ -254,6 +257,15 @@ class AppState extends ChangeNotifier {
   int get weeklyTripCount => _trips.length;
   int get monthlyTripCount => _trips.length;
 
+  double get averageWeeklyFare => weeklyTripCount > 0 ? (weeklySpending / weeklyTripCount) : 0.0;
+  double get averageMonthlyFare => monthlyTripCount > 0 ? (monthlySpending / monthlyTripCount) : 0.0;
+
+  double get remainingWeeklyBudget => (weeklyBudget - weeklySpending).clamp(0.0, weeklyBudget);
+  double get remainingMonthlyBudget => (monthlyBudget - monthlySpending).clamp(0.0, monthlyBudget);
+
+  bool get isWeeklyOnTrack => weeklySpending <= weeklyBudget;
+  bool get isMonthlyOnTrack => monthlySpending <= monthlyBudget;
+
   double get weeklyStudentSavings {
     if (!hasDiscount) return 0.0;
     // When 20% discount is applied, amount = 0.8 * regular, so savings = amount * 0.25
@@ -263,6 +275,68 @@ class AppState extends ChangeNotifier {
   double get monthlyStudentSavings {
     if (!hasDiscount) return 0.0;
     return monthlySpending * 0.25;
+  }
+
+  // Transport Category Spending Breakdowns
+  double get jeepneySpending {
+    return _trips.fold(0.0, (sum, trip) {
+      final nameLower = trip.routeName.toLowerCase();
+      if (nameLower.contains('jeep') || (!nameLower.contains('bus') && !nameLower.contains('tricycle') && !nameLower.contains('uv'))) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
+  }
+
+  double get busSpending {
+    return _trips.fold(0.0, (sum, trip) {
+      if (trip.routeName.toLowerCase().contains('bus')) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
+  }
+
+  double get otherSpending {
+    final other = weeklySpending - (jeepneySpending + busSpending);
+    return other > 0 ? other : 0.0;
+  }
+
+  // Most frequent route
+  ({String routeName, int count, int? routeId}) get mostFrequentRoute {
+    if (_trips.isEmpty) {
+      return (routeName: 'No routes yet', count: 0, routeId: null);
+    }
+    final counts = <int, int>{};
+    for (final t in _trips) {
+      counts[t.routeId] = (counts[t.routeId] ?? 0) + 1;
+    }
+    int bestRouteId = _trips.first.routeId;
+    int maxCount = 0;
+    counts.forEach((routeId, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        bestRouteId = routeId;
+      }
+    });
+
+    final matched = _routes.cast<SavedRoute?>().firstWhere(
+          (r) => r?.id == bestRouteId,
+          orElse: () => null,
+        );
+    final routeName = matched?.name ?? _trips.firstWhere((t) => t.routeId == bestRouteId).routeName;
+    return (routeName: routeName, count: maxCount, routeId: bestRouteId);
+  }
+
+  // Monthly breakdown by week
+  Map<String, double> get monthlySpendingByWeek {
+    final total = monthlySpending;
+    return {
+      'W1': total * 0.45,
+      'W2': total * 0.35,
+      'W3': total * 0.20,
+      'W4': 0.0,
+    };
   }
 
   // Day-of-week breakdown (Mon to Sun)

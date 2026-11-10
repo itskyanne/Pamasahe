@@ -16,33 +16,42 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
-  final List<Widget> _tabs = const [
-    HomeTab(),
-    RoutesTab(),
-    LinesTab(),
-    HistoryTab(),
-    SettingsTab(),
-  ];
+  void _navigateToTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final tabs = [
+      HomeTab(onNavigateToTab: _navigateToTab),
+      const RoutesTab(),
+      const LinesTab(),
+      const HistoryTab(),
+      const SettingsTab(),
+    ];
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
         index: _currentIndex,
-        children: _tabs,
+        children: tabs,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCardSurface : Colors.white,
           border: Border(
-            top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border, width: 1),
+            top: BorderSide(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE5E7EB),
+              width: 1,
+            ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(isDark ? 35 : 8),
+              color: Colors.black.withAlpha(isDark ? 40 : 10),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -50,62 +59,67 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
         child: SafeArea(
           top: false,
-          child: SizedBox(
-            height: 68,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Expanded(
-                  child: _NavBarItem(
-                    index: 0,
-                    currentIndex: _currentIndex,
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Home',
-                    onTap: () => setState(() => _currentIndex = 0),
-                  ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 550),
+              child: SizedBox(
+                height: 68,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Expanded(
+                      child: _NavBarItem(
+                        index: 0,
+                        currentIndex: _currentIndex,
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Home',
+                        onTap: () => setState(() => _currentIndex = 0),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavBarItem(
+                        index: 1,
+                        currentIndex: _currentIndex,
+                        icon: Icons.alt_route_outlined,
+                        activeIcon: Icons.alt_route_rounded,
+                        label: 'Routes',
+                        onTap: () => setState(() => _currentIndex = 1),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavBarItem(
+                        index: 2,
+                        currentIndex: _currentIndex,
+                        icon: Icons.directions_bus_outlined,
+                        activeIcon: Icons.directions_bus_filled_rounded,
+                        label: 'Lines',
+                        onTap: () => setState(() => _currentIndex = 2),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavBarItem(
+                        index: 3,
+                        currentIndex: _currentIndex,
+                        icon: Icons.history_outlined,
+                        activeIcon: Icons.history_rounded,
+                        label: 'History',
+                        onTap: () => setState(() => _currentIndex = 3),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavBarItem(
+                        index: 4,
+                        currentIndex: _currentIndex,
+                        icon: Icons.settings_outlined,
+                        activeIcon: Icons.settings_rounded,
+                        label: 'Settings',
+                        onTap: () => setState(() => _currentIndex = 4),
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: _NavBarItem(
-                    index: 1,
-                    currentIndex: _currentIndex,
-                    icon: Icons.alt_route_outlined,
-                    activeIcon: Icons.alt_route_rounded,
-                    label: 'Routes',
-                    onTap: () => setState(() => _currentIndex = 1),
-                  ),
-                ),
-                Expanded(
-                  child: _NavBarItem(
-                    index: 2,
-                    currentIndex: _currentIndex,
-                    icon: Icons.directions_bus_outlined,
-                    activeIcon: Icons.directions_bus_filled_rounded,
-                    label: 'Lines',
-                    onTap: () => setState(() => _currentIndex = 2),
-                  ),
-                ),
-                Expanded(
-                  child: _NavBarItem(
-                    index: 3,
-                    currentIndex: _currentIndex,
-                    icon: Icons.history_outlined,
-                    activeIcon: Icons.history_rounded,
-                    label: 'History',
-                    onTap: () => setState(() => _currentIndex = 3),
-                  ),
-                ),
-                Expanded(
-                  child: _NavBarItem(
-                    index: 4,
-                    currentIndex: _currentIndex,
-                    icon: Icons.settings_outlined,
-                    activeIcon: Icons.settings_rounded,
-                    label: 'Settings',
-                    onTap: () => setState(() => _currentIndex = 4),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -136,39 +150,46 @@ class _NavBarItem extends StatelessWidget {
     final isSelected = index == currentIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? AppColors.darkSurfaceMint : AppColors.lightMint)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              size: 22,
-              color: isSelected
-                  ? (isDark ? const Color(0xFF34D399) : AppColors.mainGreen)
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+    // Spec:
+    // Active destination uses dark background with white icon and text
+    // Inactive destinations use white/transparent background with dark icon and text
+    final activeBg = isDark ? const Color(0xFF1F8F55) : const Color(0xFF1E1E1E);
+    final activeFg = Colors.white;
+    final inactiveFg = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+      child: Material(
+        color: isSelected ? activeBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected ? activeIcon : icon,
+                  size: 20,
+                  color: isSelected ? activeFg : inactiveFg,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? activeFg : inactiveFg,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? (isDark ? AppColors.darkTextPrimary : AppColors.deepGreen)
-                    : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
