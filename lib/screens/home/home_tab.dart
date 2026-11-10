@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../models/saved_route.dart';
 import '../../state/app_scope.dart';
+import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
 import '../history/log_trip_screen.dart';
 import '../routes/route_detail_screen.dart';
@@ -19,6 +19,34 @@ class _HomeTabState extends State<HomeTab> {
   // Spending breakdown accordion
   bool _showSpendingDetails = false;
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Magandang umaga!';
+    } else if (hour < 18) {
+      return 'Magandang hapon!';
+    } else {
+      return 'Magandang gabi!';
+    }
+  }
+
+  String _getFormattedToday() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final now = DateTime.now();
+    final dayName = days[now.weekday - 1];
+    final monthName = months[now.month - 1];
+    return '$dayName, $monthName ${now.day}';
+  }
+
+  String _getPeriodDateRange() {
+    if (_selectedPeriod == 0) {
+      return 'Nov 3 – Nov 9, 2026';
+    } else {
+      return 'November 2026';
+    }
+  }
+
   void _openLogTrip(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -27,63 +55,48 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  void _openRouteDetail(BuildContext context, SavedRoute route) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => RouteDetailScreen(route: route),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
-    const charcoal = Color(0xFF1E1E1E);
-    const canvasBg = Color(0xFFF7F7F2);
 
+    // Period calculations
     final isWeekly = _selectedPeriod == 0;
+    final weeklySpending = state.weeklySpending;
+    final monthlySpending = state.trips.fold(0.0, (sum, trip) => sum + trip.amount);
+    final totalSpent = isWeekly ? weeklySpending : monthlySpending;
 
-    // Numerical data matching Figma screenshots & live AppState
-    final double displayedTotalSpent;
-    final int displayedTrips;
-    final double displayedAvgFare;
-    final double displayedTotalSaved;
-    final double displayedBudget;
-    final double displayedRemainingBudget;
+    final tripCount = state.trips.length;
+    final avgFare = tripCount > 0 ? (totalSpent / tripCount) : 0.0;
+    final totalSaved = state.hasDiscount ? totalSpent * 0.25 : 0.0;
 
-    if (isWeekly) {
-      final actualWeekly = state.weeklySpending;
-      displayedTotalSpent = actualWeekly > 0 ? actualWeekly : 89.60;
-      displayedTrips = state.trips.isNotEmpty ? state.trips.length : 4;
-      displayedAvgFare = displayedTrips > 0 ? (displayedTotalSpent / displayedTrips) : 22.40;
-      displayedTotalSaved = state.hasDiscount ? displayedTotalSpent * 0.25 : 0.0;
-      displayedBudget = 150.00;
-      displayedRemainingBudget = math.max(0.0, displayedBudget - displayedTotalSpent);
-    } else {
-      // Monthly view based on Figma mockup
-      final actualMonthly = state.trips.fold(0.0, (sum, trip) => sum + trip.amount);
-      displayedTotalSpent = actualMonthly > 100 ? actualMonthly : 386.80;
-      displayedTrips = math.max(18, state.trips.length);
-      displayedAvgFare = displayedTrips > 0 ? (displayedTotalSpent / displayedTrips) : 21.49;
-      displayedTotalSaved = state.hasDiscount ? (displayedTotalSpent * 0.25) : 96.70;
-      displayedBudget = 600.00;
-      displayedRemainingBudget = math.max(0.0, displayedBudget - displayedTotalSpent);
-    }
+    const weeklyBudget = 250.00;
+    const monthlyBudget = 1000.00;
+    final budget = isWeekly ? weeklyBudget : monthlyBudget;
+    final remainingBudget = (budget - totalSpent).clamp(0.0, budget);
+    final isOnTrack = totalSpent <= budget;
+    final budgetProgress = budget > 0 ? (totalSpent / budget).clamp(0.0, 1.0) : 0.0;
 
-    final budgetProgress = displayedBudget > 0
-        ? (displayedTotalSpent / displayedBudget).clamp(0.0, 1.0)
-        : 0.0;
+    // Transport category spending breakdowns
+    final jeepneySpending = state.trips.fold(0.0, (sum, trip) {
+      final nameLower = trip.routeName.toLowerCase();
+      if (nameLower.contains('jeep') || (!nameLower.contains('bus') && !nameLower.contains('tricycle') && !nameLower.contains('trike'))) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
 
-    // Breakdown numbers
-    final jeepneySpending = displayedTotalSpent * 0.65;
-    final busSpending = displayedTotalSpent * 0.25;
-    final otherSpending = math.max(0.0, displayedTotalSpent - (jeepneySpending + busSpending));
+    final busSpending = state.trips.fold(0.0, (sum, trip) {
+      if (trip.routeName.toLowerCase().contains('bus')) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
+
+    final otherSpending = math.max(0.0, totalSpent - (jeepneySpending + busSpending));
 
     // Most frequent route
-    String mostFrequentRouteName = 'Home → School';
-    int mostFrequentCount = isWeekly ? 3 : 11;
-    SavedRoute? mostFrequentRoute = state.routes.isNotEmpty ? state.routes.first : null;
-
+    String mostFrequentRouteName = 'No routes yet';
+    int mostFrequentCount = 0;
     if (state.trips.isNotEmpty) {
       final counts = <int, int>{};
       for (final t in state.trips) {
@@ -98,15 +111,22 @@ class _HomeTabState extends State<HomeTab> {
         }
       });
       final matched = state.getRouteById(bestRouteId);
-      if (matched != null) {
-        mostFrequentRoute = matched;
-        mostFrequentRouteName = '${matched.from} → ${matched.to}';
-        mostFrequentCount = maxCount;
-      }
+      mostFrequentRouteName = matched?.name ?? state.trips.firstWhere((t) => t.routeId == bestRouteId).routeName;
+      mostFrequentCount = maxCount;
     }
 
+    // Chart Data
+    final Map<String, double> chartData = isWeekly
+        ? state.weeklySpendingByDay
+        : {
+            'W1': totalSpent * 0.45,
+            'W2': totalSpent * 0.35,
+            'W3': totalSpent * 0.20,
+            'W4': 0.0,
+          };
+
     return Scaffold(
-      backgroundColor: canvasBg,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -115,32 +135,28 @@ class _HomeTabState extends State<HomeTab> {
             final horizontalPadding = isTablet ? 24.0 : 16.0;
 
             return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. TOP APP BAR
+                  // 1. TOP HEADER (Pamasahe Brand Title + User Avatar)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF168051),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.mainGreen,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Center(
-                              child: Text(
-                                'P',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.1,
-                                ),
+                              child: Icon(
+                                Icons.directions_bus_filled_rounded,
+                                color: Colors.white,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -148,27 +164,28 @@ class _HomeTabState extends State<HomeTab> {
                           const Text(
                             'Pamasahe',
                             style: TextStyle(
-                              color: charcoal,
-                              fontSize: 19,
+                              color: AppColors.deepGreen,
+                              fontSize: 20,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: -0.4,
+                              letterSpacing: -0.5,
                             ),
                           ),
                         ],
                       ),
                       Container(
-                        width: 34,
-                        height: 34,
-                        decoration: const BoxDecoration(
-                          color: charcoal,
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.lightMint,
                           shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.mainGreen, width: 1.5),
                         ),
                         child: const Center(
                           child: Text(
-                            'DP',
+                            'WP',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
+                              color: AppColors.deepGreen,
+                              fontSize: 13,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -177,256 +194,146 @@ class _HomeTabState extends State<HomeTab> {
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  // 2. TIME-RANGE SELECTOR (This week vs This month)
-                  Container(
-                    width: double.infinity,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: charcoal, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              if (_selectedPeriod != 0) {
-                                setState(() => _selectedPeriod = 0);
-                              }
-                            },
-                            child: Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isWeekly ? charcoal : Colors.transparent,
-                                borderRadius: const BorderRadius.horizontal(left: Radius.circular(5)),
-                              ),
-                              child: Text(
-                                'This week',
-                                style: TextStyle(
-                                  color: isWeekly ? Colors.white : charcoal,
-                                  fontSize: 13,
-                                  fontWeight: isWeekly ? FontWeight.w700 : FontWeight.w600,
+                  // 2. GREETING SECTION
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  _getFormattedToday(),
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceMint,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.mainGreen, width: 1),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.school_rounded,
+                                        size: 11,
+                                        color: AppColors.mainGreen,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        state.hasDiscount ? '${state.discountBadgeText} Active' : 'Regular Fare',
+                                        style: const TextStyle(
+                                          color: AppColors.deepGreen,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _getGreeting(),
+                              style: TextStyle(
+                                color: AppColors.deepGreen,
+                                fontSize: isTablet ? 24 : 21,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
                               ),
                             ),
-                          ),
-                        ),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              if (_selectedPeriod != 1) {
-                                setState(() => _selectedPeriod = 1);
-                              }
-                            },
-                            child: Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: !isWeekly ? charcoal : Colors.transparent,
-                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(5)),
-                              ),
-                              child: Text(
-                                'This month',
-                                style: TextStyle(
-                                  color: !isWeekly ? Colors.white : charcoal,
-                                  fontSize: 13,
-                                  fontWeight: !isWeekly ? FontWeight.w700 : FontWeight.w600,
-                                ),
+                            const SizedBox(height: 1),
+                            const Text(
+                              'Saan ang biyahe natin ngayon?',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                      if (isTablet)
+                        ElevatedButton.icon(
+                          onPressed: () => _openLogTrip(context),
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                          label: const Text('Log a trip', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.mainGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 14),
 
-                  // Date range label (right-aligned)
+                  // 3. PERIOD SELECTOR (This week vs This month)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 12,
-                        color: Color(0xFF6B7280),
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E7EB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildPeriodOption(0, 'This week'),
+                            const SizedBox(width: 4),
+                            _buildPeriodOption(1, 'This month'),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isWeekly ? 'Nov 2–8, 2026' : 'November 2026',
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11.5,
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          _getPeriodDateRange(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 12),
-
-                  // 3. QUICK STATISTICS CARD (Single grouped white card)
-                  Container(
-                    width: double.infinity,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: charcoal, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Top row: 2 columns
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Total trips',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        color: Color(0xFF6B7280),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '$displayedTrips',
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w800,
-                                        color: charcoal,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      isWeekly ? 'logged this week' : 'logged this month',
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 10.5,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Container(
-                              width: 1,
-                              height: 75,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Average fare',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        color: Color(0xFF6B7280),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      CurrencyFormat.format(displayedAvgFare),
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w800,
-                                        color: charcoal,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'per commute',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 10.5,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Divider line
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: const Color(0xFFCBD5D1),
-                        ),
-
-                        // Bottom row: Total saved in mint green
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          color: const Color(0xFFD6EFE3),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Total saved',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1A533E),
-                                      ),
-                                    ),
-                                    SizedBox(height: 1),
-                                    Text(
-                                      'with student fare',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 10.5,
-                                        color: Color(0xFF3D7863),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                CurrencyFormat.format(displayedTotalSaved),
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1A533E),
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
                   const SizedBox(height: 14),
 
-                  // 4. SPENDING & ACTIVITY (Responsive: stacked on phone, side-by-side on wide tablet)
+                  // 4. QUICK STATISTICS (3 metrics responsive)
+                  _buildQuickStats(
+                    isTablet: isTablet,
+                    tripCount: tripCount,
+                    avgFare: avgFare,
+                    totalSaved: totalSaved,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 5. SPENDING & ACTIVITY DASHBOARD
                   if (isWideScreen)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,9 +342,9 @@ class _HomeTabState extends State<HomeTab> {
                           flex: 5,
                           child: _buildSpendingCard(
                             isWeekly: isWeekly,
-                            totalSpent: displayedTotalSpent,
-                            totalSaved: displayedTotalSaved,
-                            budget: displayedBudget,
+                            totalSpent: totalSpent,
+                            totalSaved: totalSaved,
+                            budget: budget,
                             budgetProgress: budgetProgress,
                             jeepneySpending: jeepneySpending,
                             busSpending: busSpending,
@@ -448,16 +355,19 @@ class _HomeTabState extends State<HomeTab> {
                         const SizedBox(width: 14),
                         Expanded(
                           flex: 5,
-                          child: _buildActivityChart(isWeekly: isWeekly),
+                          child: _buildActivityChart(
+                            isWeekly: isWeekly,
+                            chartData: chartData,
+                          ),
                         ),
                       ],
                     )
                   else ...[
                     _buildSpendingCard(
                       isWeekly: isWeekly,
-                      totalSpent: displayedTotalSpent,
-                      totalSaved: displayedTotalSaved,
-                      budget: displayedBudget,
+                      totalSpent: totalSpent,
+                      totalSaved: totalSaved,
+                      budget: budget,
                       budgetProgress: budgetProgress,
                       jeepneySpending: jeepneySpending,
                       busSpending: busSpending,
@@ -465,66 +375,59 @@ class _HomeTabState extends State<HomeTab> {
                       state: state,
                     ),
                     const SizedBox(height: 14),
-                    _buildActivityChart(isWeekly: isWeekly),
+                    _buildActivityChart(
+                      isWeekly: isWeekly,
+                      chartData: chartData,
+                    ),
                   ],
 
-                  // 5. PRIMARY MOBILE ACTION "+ Log a trip" (Bright golden yellow button)
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () => _openLogTrip(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFC700),
-                        foregroundColor: charcoal,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: charcoal, width: 1),
+                  // 8. PRIMARY "LOG A TRIP" BUTTON (Below dashboard cards for thumb reach on phones)
+                  if (!isTablet) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _openLogTrip(context),
+                        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                        label: const Text(
+                          'Log a trip',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mainGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 2,
+                          shadowColor: AppColors.mainGreen.withAlpha(80),
                         ),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, size: 18, color: charcoal),
-                          SizedBox(width: 8),
-                          Text(
-                            'Log a trip',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: charcoal,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  // 6. COMMUTE INSIGHTS (Most Frequent Route & Budget Remaining)
+                  _buildCommuteInsights(
+                    isTablet: isTablet,
+                    isWeekly: isWeekly,
+                    mostFrequentRouteName: mostFrequentRouteName,
+                    mostFrequentCount: mostFrequentCount,
+                    remainingBudget: remainingBudget,
+                    isOnTrack: isOnTrack,
                   ),
 
                   const SizedBox(height: 20),
 
-                  // 6. COMMUTE INSIGHTS
-                  _buildCommuteInsights(
-                    context: context,
-                    isWeekly: isWeekly,
-                    isTablet: isTablet,
-                    mostFrequentRouteName: mostFrequentRouteName,
-                    mostFrequentCount: mostFrequentCount,
-                    totalTrips: displayedTrips,
-                    remainingBudget: displayedRemainingBudget,
-                    route: mostFrequentRoute,
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // 7. RECENT TRIPS
+                  // 7. RECENT TRIPS LIST
                   _buildRecentTripsSection(
                     context: context,
                     state: state,
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                 ],
               ),
             );
@@ -535,8 +438,169 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ==========================================
-  // SPENDING CARD (Deep Forest Green)
+  // HELPER WIDGETS
   // ==========================================
+
+  Widget _buildPeriodOption(int index, String label) {
+    final isSelected = _selectedPeriod == index;
+    return InkWell(
+      onTap: () {
+        if (_selectedPeriod != index) {
+          setState(() {
+            _selectedPeriod = index;
+          });
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? AppColors.deepGreen : AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStats({
+    required bool isTablet,
+    required int tripCount,
+    required double avgFare,
+    required double totalSaved,
+  }) {
+    final tripsCard = _buildStatCard(
+      title: 'TOTAL TRIPS',
+      value: '$tripCount',
+      unit: tripCount == 1 ? 'trip' : 'trips',
+      icon: Icons.directions_bus_rounded,
+      accentColor: const Color(0xFF5F8CFF),
+    );
+
+    final avgFareCard = _buildStatCard(
+      title: 'AVG FARE',
+      value: CurrencyFormat.format(avgFare),
+      unit: 'per trip',
+      icon: Icons.confirmation_number_outlined,
+      accentColor: const Color(0xFFFFC700),
+    );
+
+    final savingsCard = _buildStatCard(
+      title: 'STUDENT SAVINGS',
+      value: CurrencyFormat.format(totalSaved),
+      unit: '20% LTFRB discount',
+      icon: Icons.savings_outlined,
+      accentColor: AppColors.mainGreen,
+    );
+
+    if (isTablet) {
+      return Row(
+        children: [
+          Expanded(child: tripsCard),
+          const SizedBox(width: 10),
+          Expanded(child: avgFareCard),
+          const SizedBox(width: 10),
+          Expanded(child: savingsCard),
+        ],
+      );
+    } else {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: tripsCard),
+              const SizedBox(width: 10),
+              Expanded(child: avgFareCard),
+            ],
+          ),
+          const SizedBox(height: 8),
+          savingsCard,
+        ],
+      );
+    }
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required String unit,
+    required IconData icon,
+    required Color accentColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: accentColor.withAlpha(25),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(icon, size: 13, color: accentColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.deepGreen,
+              fontSize: 17.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            unit,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSpendingCard({
     required bool isWeekly,
     required double totalSpent,
@@ -548,14 +612,20 @@ class _HomeTabState extends State<HomeTab> {
     required double otherSpending,
     required AppState state,
   }) {
-    const cardBg = Color(0xFF0E443C);
+    final periodLabel = isWeekly ? 'Weekly' : 'Monthly';
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF09312B), width: 1),
+        color: AppColors.deepGreen,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepGreen.withAlpha(60),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,30 +635,34 @@ class _HomeTabState extends State<HomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.account_balance_wallet_outlined,
-                            color: Color(0xFFD2E8E1),
-                            size: 15,
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(25),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              isWeekly ? 'SPENT THIS WEEK' : 'SPENT THIS MONTH',
+                              isWeekly ? 'Spent this week' : 'Spent this month',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontFamily: 'monospace',
                                 color: Color(0xFFD2E8E1),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -602,104 +676,117 @@ class _HomeTabState extends State<HomeTab> {
                           _showSpendingDetails = !_showSpendingDetails;
                         });
                       },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _showSpendingDetails ? 'Hide details' : 'View details',
-                            style: const TextStyle(
-                              color: Color(0xFF85D3B0),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _showSpendingDetails ? 'Hide details' : 'View details',
+                              style: const TextStyle(
+                                color: Color(0xFF98DFB6),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 3),
-                          Icon(
-                            _showSpendingDetails
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.chevron_right_rounded,
-                            color: const Color(0xFF85D3B0),
-                            size: 16,
-                          ),
-                        ],
+                            const SizedBox(width: 2),
+                            Icon(
+                              _showSpendingDetails
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              color: const Color(0xFF98DFB6),
+                              size: 15,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // Giant spent amount
                 Text(
                   CurrencyFormat.format(totalSpent),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 44,
+                    fontSize: 32,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1,
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
 
-                // 20% student discount pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB6E2D3),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_rounded,
-                        color: Color(0xFF0E443C),
-                        size: 14,
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.mainGreen,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(width: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            state.discountType == DiscountType.senior
+                                ? Icons.elderly_rounded
+                                : (state.discountType == DiscountType.pwd
+                                    ? Icons.accessible_rounded
+                                    : Icons.school_rounded),
+                            color: Colors.white,
+                            size: 11,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            state.hasDiscount ? '${state.discountBadgeText} (-20%)' : 'Regular fare',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (state.hasDiscount && totalSaved > 0)
                       Text(
-                        state.hasDiscount ? '20% student discount' : 'Regular fare',
+                        'Saved ${CurrencyFormat.format(totalSaved)}',
                         style: const TextStyle(
-                          color: Color(0xFF0E443C),
+                          color: Color(0xFF98DFB6),
                           fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                // Saved amount
-                Text(
-                  'Saved ${CurrencyFormat.format(totalSaved)}',
-                  style: const TextStyle(
-                    color: Color(0xFF85D3B0),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  ],
                 ),
 
                 const SizedBox(height: 14),
 
-                // Budget used row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Budget used',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        color: Color(0xFFD2E8E1),
-                        fontSize: 11,
+                    Expanded(
+                      child: Text(
+                        '$periodLabel budget usage',
+                        style: const TextStyle(
+                          color: Color(0xFFD2E8E1),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${CurrencyFormat.format(totalSpent)} / ${CurrencyFormat.format(budget)}',
                       style: const TextStyle(
-                        fontFamily: 'monospace',
                         color: Colors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -707,75 +794,27 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 6),
-
-                // Progress line
-                Container(
-                  width: double.infinity,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(46),
-                    borderRadius: BorderRadius.circular(2),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: LinearProgressIndicator(
+                    value: budgetProgress,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withAlpha(40),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
                   ),
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: budgetProgress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFC700),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // 3 Yellow Status Dots on bottom right
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFC700),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFC700),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFC700),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
 
-          // Collapsible Spending Breakdown
           if (_showSpendingDetails) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: const BoxDecoration(
-                color: Color(0xFF082B26),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+                color: Color(0xFF09312B),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,7 +822,6 @@ class _HomeTabState extends State<HomeTab> {
                   const Text(
                     'SPENDING BREAKDOWN',
                     style: TextStyle(
-                      fontFamily: 'monospace',
                       color: Color(0xFF98DFB6),
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
@@ -791,16 +829,16 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildBreakdownRow('Jeepney', CurrencyFormat.format(jeepneySpending), Icons.airport_shuttle_outlined),
+                  _buildBreakdownRow('Jeepney', CurrencyFormat.format(jeepneySpending), Icons.airport_shuttle_rounded),
                   const SizedBox(height: 6),
-                  _buildBreakdownRow('Bus', CurrencyFormat.format(busSpending), Icons.directions_bus_outlined),
+                  _buildBreakdownRow('Bus', CurrencyFormat.format(busSpending), Icons.directions_bus_rounded),
                   const SizedBox(height: 6),
-                  _buildBreakdownRow('Other transport', CurrencyFormat.format(otherSpending), Icons.commute_outlined),
+                  _buildBreakdownRow('Other transport', CurrencyFormat.format(otherSpending), Icons.commute_rounded),
                   const Divider(color: Colors.white24, height: 16),
                   _buildBreakdownRow(
                     'Total Student Savings',
                     CurrencyFormat.format(totalSaved),
-                    Icons.savings_outlined,
+                    Icons.savings_rounded,
                     isHighlight: true,
                   ),
                 ],
@@ -818,11 +856,7 @@ class _HomeTabState extends State<HomeTab> {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 13,
-              color: isHighlight ? const Color(0xFF34D399) : const Color(0xFFD2E8E1),
-            ),
+            Icon(icon, size: 13, color: isHighlight ? const Color(0xFF34D399) : const Color(0xFFD2E8E1)),
             const SizedBox(width: 7),
             Text(
               label,
@@ -837,7 +871,6 @@ class _HomeTabState extends State<HomeTab> {
         Text(
           amount,
           style: TextStyle(
-            fontFamily: 'monospace',
             color: isHighlight ? const Color(0xFF34D399) : Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -847,39 +880,20 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ==========================================
-  // ACTIVITY CHART CARD
-  // ==========================================
-  Widget _buildActivityChart({required bool isWeekly}) {
-    const charcoal = Color(0xFF1E1E1E);
-
-    final List<MapEntry<String, double>> entries = isWeekly
-        ? const [
-            MapEntry('Mon', 26.40),
-            MapEntry('Tue', 26.40),
-            MapEntry('Wed', 10.40),
-            MapEntry('Thu', 26.40),
-            MapEntry('Fri', 0.0),
-            MapEntry('Sat', 0.0),
-            MapEntry('Sun', 0.0),
-          ]
-        : const [
-            MapEntry('W1', 74.0),
-            MapEntry('W2', 112.0),
-            MapEntry('W3', 86.0),
-            MapEntry('W4', 115.0),
-          ];
-
-    final maxVal = entries.fold(0.0, (m, e) => math.max(m, e.value));
-    final chartMax = maxVal > 0 ? maxVal : 100.0;
+  Widget _buildActivityChart({
+    required bool isWeekly,
+    required Map<String, double> chartData,
+  }) {
+    final maxVal = chartData.values.fold(0.0, (m, v) => math.max(m, v));
+    final chartMax = maxVal > 0 ? maxVal : 50.0;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: charcoal, width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,92 +901,81 @@ class _HomeTabState extends State<HomeTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isWeekly ? 'THIS WEEK' : 'NOVEMBER',
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  color: Color(0xFF6B7280),
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  isWeekly ? 'Daily Commute Activity' : 'Weekly Commute Activity',
+                  style: const TextStyle(
+                    color: AppColors.deepGreen,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
-                isWeekly ? '7 days' : '4 weeks',
+                isWeekly ? 'Mon – Sun' : 'W1 – W4',
                 style: const TextStyle(
-                  fontFamily: 'monospace',
+                  color: AppColors.textSecondary,
                   fontSize: 11,
-                  color: Color(0xFF6B7280),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            isWeekly ? 'Weekly activity' : 'Monthly activity',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: charcoal,
-            ),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
-          // Chart Bars
           SizedBox(
-            height: 140,
+            height: 120,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: entries.map((entry) {
+              children: chartData.entries.map((entry) {
                 final label = entry.key;
                 final amount = entry.value;
                 final fraction = (amount / chartMax).clamp(0.0, 1.0);
                 final hasSpend = amount > 0;
-                final barHeight = math.max(4.0, 90 * fraction);
 
                 return Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Amount label above bar
                       Text(
                         hasSpend ? '₱${amount.toStringAsFixed(0)}' : '–',
                         style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w400,
-                          color: hasSpend ? charcoal : const Color(0xFF9CA3AF),
+                          color: hasSpend ? AppColors.mainGreen : AppColors.textMuted,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
 
-                      // Green Bar
                       Container(
-                        width: isWeekly ? 18 : 32,
-                        height: barHeight,
+                        width: 16,
+                        height: 70,
                         decoration: BoxDecoration(
-                          color: hasSpend ? const Color(0xFF1B8354) : Colors.transparent,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(5),
                         ),
-                      ),
-
-                      // Baseline line
-                      Container(
-                        width: double.infinity,
-                        height: 1,
-                        color: const Color(0xFFE5E7EB),
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          width: 16,
+                          height: math.max(5.0, 70 * fraction),
+                          decoration: BoxDecoration(
+                            color: hasSpend ? AppColors.mainGreen : Colors.transparent,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 6),
 
-                      // Column label W1..W4 or Mon..Sun
                       Text(
                         label,
                         style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: hasSpend ? charcoal : const Color(0xFF6B7280),
+                          fontSize: 10.5,
+                          fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w500,
+                          color: hasSpend ? AppColors.deepGreen : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -986,421 +989,295 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ==========================================
-  // COMMUTE INSIGHTS CARD
-  // ==========================================
   Widget _buildCommuteInsights({
-    required BuildContext context,
-    required bool isWeekly,
     required bool isTablet,
+    required bool isWeekly,
     required String mostFrequentRouteName,
     required int mostFrequentCount,
-    required int totalTrips,
     required double remainingBudget,
-    required SavedRoute? route,
+    required bool isOnTrack,
   }) {
-    const charcoal = Color(0xFF1E1E1E);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Expanded(
-              child: Text(
-                'Commute insights',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: charcoal,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Updated today',
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: charcoal, width: 1),
-          ),
-          child: Column(
+    final frequentCard = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Row 1: Most frequent route
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFC700),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: charcoal, width: 1),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.alt_route_rounded,
-                          color: charcoal,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Most frequent route',
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            mostFrequentRouteName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: charcoal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$mostFrequentCount of $totalTrips trips',
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        if (route != null) {
-                          _openRouteDetail(context, route);
-                        }
-                      },
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: charcoal, width: 1),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: charcoal,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              Text(
+                'MOST FREQUENT ROUTE',
+                style: TextStyle(
+                  color: Color(0xFF5F8CFF),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
               ),
+              Icon(Icons.directions_outlined, size: 14, color: Color(0xFF5F8CFF)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            mostFrequentRouteName,
+            style: const TextStyle(
+              color: AppColors.deepGreen,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$mostFrequentCount ${mostFrequentCount == 1 ? 'trip logged' : 'trips logged'}',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
 
-              Container(
-                width: double.infinity,
-                height: 1,
-                color: const Color(0xFFE5E7EB),
+    final budgetRemainingCard = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'BUDGET REMAINING',
+                style: TextStyle(
+                  color: AppColors.mainGreen,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
               ),
-
-              // Row 2: Budget remaining
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF8AD8),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: charcoal, width: 1),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.account_balance_wallet_outlined,
-                          color: charcoal,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Budget remaining',
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            CurrencyFormat.format(remainingBudget),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: charcoal,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            "You're comfortably on track",
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD8EFE5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'ON TRACK',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A533E),
-                        ),
-                      ),
-                    ),
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isOnTrack ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isOnTrack ? 'On track' : 'Exceeded',
+                  style: TextStyle(
+                    color: isOnTrack ? AppColors.mainGreen : AppColors.coral,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            CurrencyFormat.format(remainingBudget),
+            style: const TextStyle(
+              color: AppColors.deepGreen,
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            isOnTrack
+                ? 'Within ${isWeekly ? 'weekly' : 'monthly'} budget'
+                : 'Over budget limit',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
+
+    if (isTablet) {
+      return Row(
+        children: [
+          Expanded(child: frequentCard),
+          const SizedBox(width: 10),
+          Expanded(child: budgetRemainingCard),
+        ],
+      );
+    } else {
+      return Column(
+        children: [
+          frequentCard,
+          const SizedBox(height: 10),
+          budgetRemainingCard,
+        ],
+      );
+    }
   }
 
-  // ==========================================
-  // RECENT TRIPS SECTION
-  // ==========================================
   Widget _buildRecentTripsSection({
     required BuildContext context,
     required AppState state,
   }) {
-    const charcoal = Color(0xFF1E1E1E);
-
-    final recentItems = [
-      {
-        'route': 'Home to School',
-        'meta': 'JEEP · NOV 5, 2026',
-        'fare': 26.40,
-        'badgeColor': const Color(0xFFFFC700),
-        'icon': Icons.directions_bus_outlined,
-        'routeId': 1,
-      },
-      {
-        'route': 'School to Mall',
-        'meta': 'BUS · NOV 4, 2026',
-        'fare': 10.40,
-        'badgeColor': const Color(0xFF5F8CFF),
-        'icon': Icons.directions_bus_outlined,
-        'routeId': 3,
-      },
-      {
-        'route': 'Mall to Home',
-        'meta': 'JEEP · NOV 3, 2026',
-        'fare': 26.40,
-        'badgeColor': const Color(0xFFFF8AD8),
-        'icon': Icons.directions_bus_outlined,
-        'routeId': 1,
-      },
-    ];
+    final recentTrips = state.trips.take(4).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'TRIP LOG',
+          'Recent trips',
           style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: Color(0xFF6B7280),
-            letterSpacing: 1.0,
+            color: AppColors.deepGreen,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 2),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Expanded(
+        const SizedBox(height: 10),
+
+        if (recentTrips.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Center(
               child: Text(
-                'Recent trips',
+                'No trips logged yet.',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: charcoal,
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            InkWell(
-              onTap: () {},
-              child: const Text(
-                'View all 4 trips',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: charcoal,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+          )
+        else
+          ...recentTrips.map((trip) {
+            final savedRoute = state.getRouteById(trip.routeId);
+            final nameLower = trip.routeName.toLowerCase();
+            final isBus = nameLower.contains('bus');
+            final isTricycle = nameLower.contains('trike') || nameLower.contains('tricycle');
 
-        // List of trips with horizontal dividers
-        ...List.generate(recentItems.length, (index) {
-          final item = recentItems[index];
-          final routeName = item['route'] as String;
-          final meta = item['meta'] as String;
-          final fare = item['fare'] as double;
-          final badgeColor = item['badgeColor'] as Color;
-          final icon = item['icon'] as IconData;
-          final routeId = item['routeId'] as int;
-          final matchedRoute = state.getRouteById(routeId);
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: charcoal, width: 1),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  if (savedRoute != null) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RouteDetailScreen(route: savedRoute),
                       ),
-                      child: Center(
+                    );
+                  }
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isBus
+                              ? AppColors.deepGreen
+                              : (isTricycle
+                                  ? const Color(0xFFFFC700).withAlpha(40)
+                                  : AppColors.lightMint),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Icon(
-                          icon,
-                          color: charcoal,
-                          size: 20,
+                          isBus
+                              ? Icons.directions_bus_filled_rounded
+                              : (isTricycle
+                                  ? Icons.electric_rickshaw_rounded
+                                  : Icons.airport_shuttle_rounded),
+                          color: isBus
+                              ? Colors.white
+                              : (isTricycle
+                                  ? const Color(0xFFB8690A)
+                                  : AppColors.mainGreen),
+                          size: 18,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              trip.routeName,
+                              style: const TextStyle(
+                                color: AppColors.deepGreen,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              trip.date,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            routeName,
+                            CurrencyFormat.format(trip.amount),
                             style: const TextStyle(
+                              color: AppColors.deepGreen,
+                              fontWeight: FontWeight.w800,
                               fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: charcoal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            meta,
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: Color(0xFF6B7280),
                             ),
                           ),
+                          if (savedRoute != null)
+                            const Text(
+                              'View route →',
+                              style: TextStyle(
+                                color: AppColors.mainGreen,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          CurrencyFormat.format(fare),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: charcoal,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        InkWell(
-                          onTap: () {
-                            if (matchedRoute != null) {
-                              _openRouteDetail(context, matchedRoute);
-                            }
-                          },
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'View route',
-                                style: TextStyle(
-                                  color: Color(0xFF1B8354),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: 2),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                size: 14,
-                                color: Color(0xFF1B8354),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              if (index < recentItems.length - 1)
-                Container(
-                  width: double.infinity,
-                  height: 1,
-                  color: const Color(0xFFE5E7EB),
-                ),
-            ],
-          );
-        }),
+            );
+          }),
       ],
     );
   }
