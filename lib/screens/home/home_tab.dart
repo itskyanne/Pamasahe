@@ -1,17 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../state/app_scope.dart';
+import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
 import '../history/log_trip_screen.dart';
 import '../routes/route_detail_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  final void Function(int tabIndex)? onNavigateToTab;
-
-  const HomeTab({
-    super.key,
-    this.onNavigateToTab,
-  });
+  const HomeTab({super.key});
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -62,94 +58,134 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Period-dependent metrics
+    // Period calculations
     final isWeekly = _selectedPeriod == 0;
-    final totalSpent = isWeekly ? state.weeklySpending : state.monthlySpending;
-    final tripCount = isWeekly ? state.weeklyTripCount : state.monthlyTripCount;
-    final avgFare = isWeekly ? state.averageWeeklyFare : state.averageMonthlyFare;
-    final totalSaved = isWeekly ? state.weeklyStudentSavings : state.monthlyStudentSavings;
-    final budget = isWeekly ? state.weeklyBudget : state.monthlyBudget;
-    final remainingBudget = isWeekly ? state.remainingWeeklyBudget : state.remainingMonthlyBudget;
-    final isOnTrack = isWeekly ? state.isWeeklyOnTrack : state.isMonthlyOnTrack;
+    final weeklySpending = state.weeklySpending;
+    final monthlySpending = state.trips.fold(0.0, (sum, trip) => sum + trip.amount);
+    final totalSpent = isWeekly ? weeklySpending : monthlySpending;
+
+    final tripCount = state.trips.length;
+    final avgFare = tripCount > 0 ? (totalSpent / tripCount) : 0.0;
+    final totalSaved = state.hasDiscount ? totalSpent * 0.25 : 0.0;
+
+    const weeklyBudget = 250.00;
+    const monthlyBudget = 1000.00;
+    final budget = isWeekly ? weeklyBudget : monthlyBudget;
+    final remainingBudget = (budget - totalSpent).clamp(0.0, budget);
+    final isOnTrack = totalSpent <= budget;
     final budgetProgress = budget > 0 ? (totalSpent / budget).clamp(0.0, 1.0) : 0.0;
 
+    // Transport category spending breakdowns
+    final jeepneySpending = state.trips.fold(0.0, (sum, trip) {
+      final nameLower = trip.routeName.toLowerCase();
+      if (nameLower.contains('jeep') || (!nameLower.contains('bus') && !nameLower.contains('tricycle') && !nameLower.contains('trike'))) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
+
+    final busSpending = state.trips.fold(0.0, (sum, trip) {
+      if (trip.routeName.toLowerCase().contains('bus')) {
+        return sum + trip.amount;
+      }
+      return sum;
+    });
+
+    final otherSpending = math.max(0.0, totalSpent - (jeepneySpending + busSpending));
+
+    // Most frequent route
+    String mostFrequentRouteName = 'No routes yet';
+    int mostFrequentCount = 0;
+    if (state.trips.isNotEmpty) {
+      final counts = <int, int>{};
+      for (final t in state.trips) {
+        counts[t.routeId] = (counts[t.routeId] ?? 0) + 1;
+      }
+      int bestRouteId = state.trips.first.routeId;
+      int maxCount = 0;
+      counts.forEach((routeId, count) {
+        if (count > maxCount) {
+          maxCount = count;
+          bestRouteId = routeId;
+        }
+      });
+      final matched = state.getRouteById(bestRouteId);
+      mostFrequentRouteName = matched?.name ?? state.trips.firstWhere((t) => t.routeId == bestRouteId).routeName;
+      mostFrequentCount = maxCount;
+    }
+
+    // Chart Data
+    final Map<String, double> chartData = isWeekly
+        ? state.weeklySpendingByDay
+        : {
+            'W1': totalSpent * 0.45,
+            'W2': totalSpent * 0.35,
+            'W3': totalSpent * 0.20,
+            'W4': 0.0,
+          };
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF101917) : const Color(0xFFF5F5F0),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 600;
             final isWideScreen = constraints.maxWidth >= 720;
-            final horizontalPadding = isTablet ? 28.0 : 18.0;
+            final horizontalPadding = isTablet ? 24.0 : 16.0;
 
-            return Column(
-              children: [
-                // 1. COMPACT STICKY TOP APP BAR
-                Container(
-                  height: 56,
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF162320) : Colors.white,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. TOP HEADER (Pamasahe Brand Title + User Avatar)
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Pamasahe Brand Badge & Title
                       Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1F8F55),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.mainGreen,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Center(
                               child: Icon(
                                 Icons.directions_bus_filled_rounded,
                                 color: Colors.white,
-                                size: 18,
+                                size: 20,
                               ),
                             ),
                           ),
                           const SizedBox(width: 10),
-                          Text(
+                          const Text(
                             'Pamasahe',
                             style: TextStyle(
-                              color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                              fontSize: 18.5,
+                              color: AppColors.deepGreen,
+                              fontSize: 20,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
                             ),
                           ),
                         ],
                       ),
-                      // Circular User Avatar
                       Container(
-                        width: 34,
-                        height: 34,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF263935) : const Color(0xFFEAF4F1),
+                          color: AppColors.lightMint,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55),
-                            width: 1.5,
-                          ),
+                          border: Border.all(color: AppColors.mainGreen, width: 1.5),
                         ),
-                        child: Center(
+                        child: const Center(
                           child: Text(
                             'WP',
                             style: TextStyle(
-                              color: isDark ? const Color(0xFF34D399) : const Color(0xFF0E443C),
-                              fontSize: 12,
+                              color: AppColors.deepGreen,
+                              fontSize: 13,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -157,128 +193,243 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                     ],
                   ),
-                ),
 
-                // SCROLLABLE DASHBOARD BODY
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: 16,
-                    ),
-                    child: Column(
+                  const SizedBox(height: 16),
+
+                  // 2. GREETING SECTION
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  _getFormattedToday(),
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceMint,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.mainGreen, width: 1),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.school_rounded,
+                                        size: 11,
+                                        color: AppColors.mainGreen,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        state.hasDiscount ? '${state.discountBadgeText} Active' : 'Regular Fare',
+                                        style: const TextStyle(
+                                          color: AppColors.deepGreen,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _getGreeting(),
+                              style: TextStyle(
+                                color: AppColors.deepGreen,
+                                fontSize: isTablet ? 24 : 21,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            const Text(
+                              'Saan ang biyahe natin ngayon?',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isTablet)
+                        ElevatedButton.icon(
+                          onPressed: () => _openLogTrip(context),
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                          label: const Text('Log a trip', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.mainGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // 3. PERIOD SELECTOR (This week vs This month)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E7EB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildPeriodOption(0, 'This week'),
+                            const SizedBox(width: 4),
+                            _buildPeriodOption(1, 'This month'),
+                          ],
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          _getPeriodDateRange(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // 4. QUICK STATISTICS (3 metrics responsive)
+                  _buildQuickStats(
+                    isTablet: isTablet,
+                    tripCount: tripCount,
+                    avgFare: avgFare,
+                    totalSaved: totalSaved,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 5. SPENDING & ACTIVITY DASHBOARD
+                  if (isWideScreen)
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 2. GREETING SECTION
-                        _buildGreetingSection(
-                          context: context,
-                          isTablet: isTablet,
-                          isDark: isDark,
-                          state: state,
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // 3. PERIOD SELECTOR (This week vs This month)
-                        _buildPeriodSelector(isDark: isDark),
-
-                        const SizedBox(height: 14),
-
-                        // 4. QUICK STATISTICS (3 metrics responsive)
-                        _buildQuickStatistics(
-                          isTablet: isTablet,
-                          isDark: isDark,
-                          tripCount: tripCount,
-                          avgFare: avgFare,
-                          totalSaved: totalSaved,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // 5. SPENDING & ACTIVITY DASHBOARD
-                        if (isWideScreen)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Spending Card (Left Column)
-                              Expanded(
-                                flex: 5,
-                                child: _buildSpendingCard(
-                                  context: context,
-                                  isDark: isDark,
-                                  isWeekly: isWeekly,
-                                  totalSpent: totalSpent,
-                                  totalSaved: totalSaved,
-                                  budget: budget,
-                                  budgetProgress: budgetProgress,
-                                  state: state,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              // Activity Chart (Right Column)
-                              Expanded(
-                                flex: 5,
-                                child: _buildActivityChart(
-                                  isDark: isDark,
-                                  isWeekly: isWeekly,
-                                  state: state,
-                                ),
-                              ),
-                            ],
-                          )
-                        else ...[
-                          _buildSpendingCard(
-                            context: context,
-                            isDark: isDark,
+                        Expanded(
+                          flex: 5,
+                          child: _buildSpendingCard(
                             isWeekly: isWeekly,
                             totalSpent: totalSpent,
                             totalSaved: totalSaved,
                             budget: budget,
                             budgetProgress: budgetProgress,
+                            jeepneySpending: jeepneySpending,
+                            busSpending: busSpending,
+                            otherSpending: otherSpending,
                             state: state,
                           ),
-                          const SizedBox(height: 14),
-                          _buildActivityChart(
-                            isDark: isDark,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          flex: 5,
+                          child: _buildActivityChart(
                             isWeekly: isWeekly,
-                            state: state,
+                            chartData: chartData,
                           ),
-                        ],
-
-                        // 8. PRIMARY "LOG A TRIP" BUTTON (Below dashboard cards for thumb access on phones)
-                        if (!isTablet) ...[
-                          const SizedBox(height: 16),
-                          _buildPhoneLogTripButton(context),
-                        ],
-
-                        const SizedBox(height: 16),
-
-                        // 6. COMMUTE INSIGHTS (Most Frequent Route & Budget Remaining)
-                        _buildCommuteInsights(
-                          context: context,
-                          isTablet: isTablet,
-                          isDark: isDark,
-                          isWeekly: isWeekly,
-                          remainingBudget: remainingBudget,
-                          isOnTrack: isOnTrack,
-                          state: state,
                         ),
-
-                        const SizedBox(height: 20),
-
-                        // 7. RECENT TRIPS LIST
-                        _buildRecentTripsSection(
-                          context: context,
-                          isDark: isDark,
-                          state: state,
-                        ),
-
-                        const SizedBox(height: 20),
                       ],
+                    )
+                  else ...[
+                    _buildSpendingCard(
+                      isWeekly: isWeekly,
+                      totalSpent: totalSpent,
+                      totalSaved: totalSaved,
+                      budget: budget,
+                      budgetProgress: budgetProgress,
+                      jeepneySpending: jeepneySpending,
+                      busSpending: busSpending,
+                      otherSpending: otherSpending,
+                      state: state,
                     ),
+                    const SizedBox(height: 14),
+                    _buildActivityChart(
+                      isWeekly: isWeekly,
+                      chartData: chartData,
+                    ),
+                  ],
+
+                  // 8. PRIMARY "LOG A TRIP" BUTTON (Below dashboard cards for thumb reach on phones)
+                  if (!isTablet) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _openLogTrip(context),
+                        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                        label: const Text(
+                          'Log a trip',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mainGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 2,
+                          shadowColor: AppColors.mainGreen.withAlpha(80),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  // 6. COMMUTE INSIGHTS (Most Frequent Route & Budget Remaining)
+                  _buildCommuteInsights(
+                    isTablet: isTablet,
+                    isWeekly: isWeekly,
+                    mostFrequentRouteName: mostFrequentRouteName,
+                    mostFrequentCount: mostFrequentCount,
+                    remainingBudget: remainingBudget,
+                    isOnTrack: isOnTrack,
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 20),
+
+                  // 7. RECENT TRIPS LIST
+                  _buildRecentTripsSection(
+                    context: context,
+                    state: state,
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
             );
           },
         ),
@@ -287,156 +438,10 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ==========================================
-  // SECTION BUILDERS
+  // HELPER WIDGETS
   // ==========================================
 
-  // 2. Greeting Section
-  Widget _buildGreetingSection({
-    required BuildContext context,
-    required bool isTablet,
-    required bool isDark,
-    required AppState state,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date & Student Fare Pill
-              Row(
-                children: [
-                  Text(
-                    _getFormattedToday(),
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E3A32) : const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.school_rounded,
-                          size: 11,
-                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          state.hasDiscount ? '${state.discountBadgeText} Active' : 'Regular Fare',
-                          style: TextStyle(
-                            color: isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              // Main Filipino Greeting
-              Text(
-                _getGreeting(),
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                  fontSize: isTablet ? 24 : 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                'Saan ang biyahe natin ngayon?',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Primary Log a Trip button on tablets
-        if (isTablet)
-          ElevatedButton.icon(
-            onPressed: () => _openLogTrip(context),
-            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-            label: const Text('Log a trip', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1F8F55),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 2,
-            ),
-          ),
-      ],
-    );
-  }
-
-  // 3. Period Selector Segmented Control
-  Widget _buildPeriodSelector({required bool isDark}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1C2B27) : const Color(0xFFE5E7EB),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildPeriodOption(
-                index: 0,
-                label: 'This week',
-                isDark: isDark,
-              ),
-              const SizedBox(width: 4),
-              _buildPeriodOption(
-                index: 1,
-                label: 'This month',
-                isDark: isDark,
-              ),
-            ],
-          ),
-        ),
-        // Date Range Label
-        Text(
-          _getPeriodDateRange(),
-          style: TextStyle(
-            color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPeriodOption({
-    required int index,
-    required String label,
-    required bool isDark,
-  }) {
+  Widget _buildPeriodOption(int index, String label) {
     final isSelected = _selectedPeriod == index;
     return InkWell(
       onTap: () {
@@ -451,14 +456,12 @@ class _HomeTabState extends State<HomeTab> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? const Color(0xFF0E443C) : Colors.white)
-              : Colors.transparent,
+          color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withAlpha(isDark ? 50 : 20),
+                    color: Colors.black.withAlpha(20),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -468,9 +471,7 @@ class _HomeTabState extends State<HomeTab> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected
-                ? (isDark ? const Color(0xFF34D399) : const Color(0xFF1E1E1E))
-                : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280)),
+            color: isSelected ? AppColors.deepGreen : AppColors.textSecondary,
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -479,10 +480,8 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // 4. Quick Statistics (Responsive: 1 row on tablet, 2 cols + 1 full-width on phone)
-  Widget _buildQuickStatistics({
+  Widget _buildQuickStats({
     required bool isTablet,
-    required bool isDark,
     required int tripCount,
     required double avgFare,
     required double totalSaved,
@@ -493,7 +492,6 @@ class _HomeTabState extends State<HomeTab> {
       unit: tripCount == 1 ? 'trip' : 'trips',
       icon: Icons.directions_bus_rounded,
       accentColor: const Color(0xFF5F8CFF),
-      isDark: isDark,
     );
 
     final avgFareCard = _buildStatCard(
@@ -502,7 +500,6 @@ class _HomeTabState extends State<HomeTab> {
       unit: 'per trip',
       icon: Icons.confirmation_number_outlined,
       accentColor: const Color(0xFFFFC700),
-      isDark: isDark,
     );
 
     final savingsCard = _buildStatCard(
@@ -510,8 +507,7 @@ class _HomeTabState extends State<HomeTab> {
       value: CurrencyFormat.format(totalSaved),
       unit: '20% LTFRB discount',
       icon: Icons.savings_outlined,
-      accentColor: const Color(0xFF1F8F55),
-      isDark: isDark,
+      accentColor: AppColors.mainGreen,
     );
 
     if (isTablet) {
@@ -547,18 +543,14 @@ class _HomeTabState extends State<HomeTab> {
     required String unit,
     required IconData icon,
     required Color accentColor,
-    required bool isDark,
   }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF162320) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,28 +560,28 @@ class _HomeTabState extends State<HomeTab> {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(3.5),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: accentColor.withAlpha(isDark ? 40 : 25),
+                  color: accentColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(icon, size: 13, color: accentColor),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
             value,
-            style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+            style: const TextStyle(
+              color: AppColors.deepGreen,
               fontSize: 17.5,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -598,8 +590,8 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: 1),
           Text(
             unit,
-            style: TextStyle(
-              color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -609,43 +601,15 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // 8. Large Primary "Log a Trip" Button for Phone Thumb Reach
-  Widget _buildPhoneLogTripButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: () => _openLogTrip(context),
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 19),
-        label: const Text(
-          'Log a trip',
-          style: TextStyle(
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1F8F55),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          elevation: 2,
-          shadowColor: const Color(0xFF1F8F55).withAlpha(80),
-        ),
-      ),
-    );
-  }
-
-  // 5. Spending Card & Expandable Spending Details Panel
   Widget _buildSpendingCard({
-    required BuildContext context,
-    required bool isDark,
     required bool isWeekly,
     required double totalSpent,
     required double totalSaved,
     required double budget,
     required double budgetProgress,
+    required double jeepneySpending,
+    required double busSpending,
+    required double otherSpending,
     required AppState state,
   }) {
     final periodLabel = isWeekly ? 'Weekly' : 'Monthly';
@@ -653,11 +617,11 @@ class _HomeTabState extends State<HomeTab> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF0E443C), // Deep green signature card
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.deepGreen,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0E443C).withAlpha(70),
+            color: AppColors.deepGreen.withAlpha(60),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -671,36 +635,41 @@ class _HomeTabState extends State<HomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(25),
-                            borderRadius: BorderRadius.circular(7),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(25),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: Colors.white,
-                            size: 15,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              isWeekly ? 'Spent this week' : 'Spent this month',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFD2E8E1),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isWeekly ? 'Spent this week' : 'Spent this month',
-                          style: const TextStyle(
-                            color: Color(0xFFD2E8E1),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    // "View details" Accordion Button
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () {
                         setState(() {
@@ -711,6 +680,7 @@ class _HomeTabState extends State<HomeTab> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               _showSpendingDetails ? 'Hide details' : 'View details',
@@ -737,7 +707,6 @@ class _HomeTabState extends State<HomeTab> {
 
                 const SizedBox(height: 12),
 
-                // Large Amount Spent
                 Text(
                   CurrencyFormat.format(totalSpent),
                   style: const TextStyle(
@@ -750,7 +719,6 @@ class _HomeTabState extends State<HomeTab> {
 
                 const SizedBox(height: 5),
 
-                // Discount Badge & Savings
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 8,
@@ -759,7 +727,7 @@ class _HomeTabState extends State<HomeTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F8F55),
+                        color: AppColors.mainGreen,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
@@ -779,7 +747,7 @@ class _HomeTabState extends State<HomeTab> {
                             state.hasDiscount ? '${state.discountBadgeText} (-20%)' : 'Regular fare',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -800,18 +768,22 @@ class _HomeTabState extends State<HomeTab> {
 
                 const SizedBox(height: 14),
 
-                // Budget Usage Bar
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '$periodLabel budget usage',
-                      style: const TextStyle(
-                        color: Color(0xFFD2E8E1),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        '$periodLabel budget usage',
+                        style: const TextStyle(
+                          color: Color(0xFFD2E8E1),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${CurrencyFormat.format(totalSpent)} / ${CurrencyFormat.format(budget)}',
                       style: const TextStyle(
@@ -829,23 +801,20 @@ class _HomeTabState extends State<HomeTab> {
                     value: budgetProgress,
                     minHeight: 6,
                     backgroundColor: Colors.white.withAlpha(40),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      budgetProgress > 0.9 ? const Color(0xFFFF8AD8) : const Color(0xFF34D399),
-                    ),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Collapsible Spending Details Breakdown Panel
           if (_showSpendingDetails) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: const BoxDecoration(
                 color: Color(0xFF09312B),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -860,11 +829,11 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildBreakdownRow('Jeepney', CurrencyFormat.format(state.jeepneySpending), Icons.airport_shuttle_rounded),
+                  _buildBreakdownRow('Jeepney', CurrencyFormat.format(jeepneySpending), Icons.airport_shuttle_rounded),
                   const SizedBox(height: 6),
-                  _buildBreakdownRow('Bus', CurrencyFormat.format(state.busSpending), Icons.directions_bus_rounded),
+                  _buildBreakdownRow('Bus', CurrencyFormat.format(busSpending), Icons.directions_bus_rounded),
                   const SizedBox(height: 6),
-                  _buildBreakdownRow('Other transport', CurrencyFormat.format(state.otherSpending), Icons.commute_rounded),
+                  _buildBreakdownRow('Other transport', CurrencyFormat.format(otherSpending), Icons.commute_rounded),
                   const Divider(color: Colors.white24, height: 16),
                   _buildBreakdownRow(
                     'Total Student Savings',
@@ -911,16 +880,10 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // 5. Activity Chart (Daily bars for weekly, Weekly bars for monthly)
   Widget _buildActivityChart({
-    required bool isDark,
     required bool isWeekly,
-    required AppState state,
+    required Map<String, double> chartData,
   }) {
-    final Map<String, double> chartData = isWeekly
-        ? state.weeklySpendingByDay
-        : state.monthlySpendingByWeek;
-
     final maxVal = chartData.values.fold(0.0, (m, v) => math.max(m, v));
     final chartMax = maxVal > 0 ? maxVal : 50.0;
 
@@ -928,12 +891,9 @@ class _HomeTabState extends State<HomeTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF162320) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -941,18 +901,23 @@ class _HomeTabState extends State<HomeTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isWeekly ? 'Daily Commute Activity' : 'Weekly Commute Activity',
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  isWeekly ? 'Daily Commute Activity' : 'Weekly Commute Activity',
+                  style: const TextStyle(
+                    color: AppColors.deepGreen,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 isWeekly ? 'Mon – Sun' : 'W1 – W4',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -961,7 +926,6 @@ class _HomeTabState extends State<HomeTab> {
           ),
           const SizedBox(height: 14),
 
-          // Activity Bars
           SizedBox(
             height: 120,
             child: Row(
@@ -977,50 +941,41 @@ class _HomeTabState extends State<HomeTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Amount label above bar or "-" empty state
                       Text(
                         hasSpend ? '₱${amount.toStringAsFixed(0)}' : '–',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w400,
-                          color: hasSpend
-                              ? (isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55))
-                              : (isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF)),
+                          color: hasSpend ? AppColors.mainGreen : AppColors.textMuted,
                         ),
                       ),
                       const SizedBox(height: 4),
 
-                      // Bar Track
                       Container(
-                        width: 15,
+                        width: 16,
                         height: 70,
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E2E2A) : const Color(0xFFF3F4F6),
+                          color: const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(5),
                         ),
                         alignment: Alignment.bottomCenter,
                         child: Container(
-                          width: 15,
+                          width: 16,
                           height: math.max(5.0, 70 * fraction),
                           decoration: BoxDecoration(
-                            color: hasSpend
-                                ? (isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55))
-                                : Colors.transparent,
+                            color: hasSpend ? AppColors.mainGreen : Colors.transparent,
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
                       ),
                       const SizedBox(height: 6),
 
-                      // Day / Week Label
                       Text(
                         label,
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w500,
-                          color: hasSpend
-                              ? (isDark ? Colors.white : const Color(0xFF1E1E1E))
-                              : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
+                          color: hasSpend ? AppColors.deepGreen : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -1034,36 +989,29 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // 6. Commute Insights (Most Frequent Route & Budget Remaining)
   Widget _buildCommuteInsights({
-    required BuildContext context,
     required bool isTablet,
-    required bool isDark,
     required bool isWeekly,
+    required String mostFrequentRouteName,
+    required int mostFrequentCount,
     required double remainingBudget,
     required bool isOnTrack,
-    required AppState state,
   }) {
-    final mostFrequent = state.mostFrequentRoute;
-
     final frequentCard = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF162320) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'MOST FREQUENT ROUTE',
                 style: TextStyle(
                   color: Color(0xFF5F8CFF),
@@ -1072,30 +1020,14 @@ class _HomeTabState extends State<HomeTab> {
                   letterSpacing: 0.5,
                 ),
               ),
-              InkWell(
-                onTap: () => widget.onNavigateToTab?.call(1), // Go to Routes Tab
-                child: const Row(
-                  children: [
-                    Text(
-                      'View routes',
-                      style: TextStyle(
-                        color: Color(0xFF5F8CFF),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF5F8CFF)),
-                  ],
-                ),
-              ),
+              Icon(Icons.directions_outlined, size: 14, color: Color(0xFF5F8CFF)),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            mostFrequent.routeName,
-            style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+            mostFrequentRouteName,
+            style: const TextStyle(
+              color: AppColors.deepGreen,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -1104,9 +1036,9 @@ class _HomeTabState extends State<HomeTab> {
           ),
           const SizedBox(height: 2),
           Text(
-            '${mostFrequent.count} ${mostFrequent.count == 1 ? 'trip logged' : 'trips logged'}',
-            style: TextStyle(
-              color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+            '$mostFrequentCount ${mostFrequentCount == 1 ? 'trip logged' : 'trips logged'}',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -1119,12 +1051,9 @@ class _HomeTabState extends State<HomeTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF162320) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1135,7 +1064,7 @@ class _HomeTabState extends State<HomeTab> {
               const Text(
                 'BUDGET REMAINING',
                 style: TextStyle(
-                  color: Color(0xFF1F8F55),
+                  color: AppColors.mainGreen,
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -1144,15 +1073,13 @@ class _HomeTabState extends State<HomeTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isOnTrack
-                      ? (isDark ? const Color(0xFF1E3A32) : const Color(0xFFE8F5E9))
-                      : (isDark ? const Color(0xFF3E2323) : const Color(0xFFFFEBEE)),
+                  color: isOnTrack ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   isOnTrack ? 'On track' : 'Exceeded',
                   style: TextStyle(
-                    color: isOnTrack ? const Color(0xFF1F8F55) : const Color(0xFFC8412B),
+                    color: isOnTrack ? AppColors.mainGreen : AppColors.coral,
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1163,8 +1090,8 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: 6),
           Text(
             CurrencyFormat.format(remainingBudget),
-            style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+            style: const TextStyle(
+              color: AppColors.deepGreen,
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
             ),
@@ -1174,8 +1101,8 @@ class _HomeTabState extends State<HomeTab> {
             isOnTrack
                 ? 'Within ${isWeekly ? 'weekly' : 'monthly'} budget'
                 : 'Over budget limit',
-            style: TextStyle(
-              color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -1203,10 +1130,8 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  // 7. Recent Trips Section
   Widget _buildRecentTripsSection({
     required BuildContext context,
-    required bool isDark,
     required AppState state,
   }) {
     final recentTrips = state.trips.take(4).toList();
@@ -1214,35 +1139,13 @@ class _HomeTabState extends State<HomeTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recent trips',
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            InkWell(
-              onTap: () => widget.onNavigateToTab?.call(3), // Go to History Tab
-              child: const Row(
-                children: [
-                  Text(
-                    'View all trips',
-                    style: TextStyle(
-                      color: Color(0xFF1F8F55),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(width: 3),
-                  Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFF1F8F55)),
-                ],
-              ),
-            ),
-          ],
+        const Text(
+          'Recent trips',
+          style: TextStyle(
+            color: AppColors.deepGreen,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 10),
 
@@ -1251,17 +1154,15 @@ class _HomeTabState extends State<HomeTab> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 20),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF162320) : Colors.white,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-              ),
+              border: Border.all(color: AppColors.border),
             ),
             child: const Center(
               child: Text(
                 'No trips logged yet.',
                 style: TextStyle(
-                  color: Color(0xFF6B7280),
+                  color: AppColors.textSecondary,
                   fontSize: 13,
                 ),
               ),
@@ -1290,25 +1191,21 @@ class _HomeTabState extends State<HomeTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF162320) : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF263935) : const Color(0xFFE5E7EB),
-                      width: 1,
-                    ),
+                    border: Border.all(color: AppColors.border, width: 1),
                   ),
                   child: Row(
                     children: [
-                      // Transport Type Icon Badge
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: isBus
-                              ? const Color(0xFF0E443C)
+                              ? AppColors.deepGreen
                               : (isTricycle
                                   ? const Color(0xFFFFC700).withAlpha(40)
-                                  : (isDark ? const Color(0xFF1E3A32) : const Color(0xFFEAF4F1))),
+                                  : AppColors.lightMint),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -1321,21 +1218,20 @@ class _HomeTabState extends State<HomeTab> {
                               ? Colors.white
                               : (isTricycle
                                   ? const Color(0xFFB8690A)
-                                  : (isDark ? const Color(0xFF34D399) : const Color(0xFF1F8F55))),
+                                  : AppColors.mainGreen),
                           size: 18,
                         ),
                       ),
                       const SizedBox(width: 10),
 
-                      // Route Name & Date
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               trip.routeName,
-                              style: TextStyle(
-                                color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+                              style: const TextStyle(
+                                color: AppColors.deepGreen,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
@@ -1345,8 +1241,8 @@ class _HomeTabState extends State<HomeTab> {
                             const SizedBox(height: 2),
                             Text(
                               trip.date,
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
                                 fontSize: 11,
                               ),
                             ),
@@ -1354,14 +1250,13 @@ class _HomeTabState extends State<HomeTab> {
                         ),
                       ),
 
-                      // Fare and View route affordance
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
                             CurrencyFormat.format(trip.amount),
-                            style: TextStyle(
-                              color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+                            style: const TextStyle(
+                              color: AppColors.deepGreen,
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                             ),
@@ -1370,7 +1265,7 @@ class _HomeTabState extends State<HomeTab> {
                             const Text(
                               'View route →',
                               style: TextStyle(
-                                color: Color(0xFF1F8F55),
+                                color: AppColors.mainGreen,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               ),

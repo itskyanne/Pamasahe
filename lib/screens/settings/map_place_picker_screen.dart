@@ -364,13 +364,12 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
   @override
   Widget build(BuildContext context) {
     final isView = widget.isViewOnly;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).padding.top;
     final topBarHeight = topPadding + (isView ? 62.0 : 108.0);
     final bottomSheetHeight = isView ? 150.0 : 330.0;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF101917) : const Color(0xFFF2EFE9), // OSM land background
+      backgroundColor: const Color(0xFFF2EFE9), // OSM land background
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
@@ -425,7 +424,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                           },
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return Container(color: isDark ? const Color(0xFF101917) : const Color(0xFFF2EFE9));
+                            return Container(color: const Color(0xFFF2EFE9));
                           },
                         ),
                       ),
@@ -462,7 +461,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                     child: Container(
                       width: double.infinity,
                       height: double.infinity,
-                      color: isDark ? const Color(0xFF101917) : const Color(0xFFF2EFE9),
+                      color: const Color(0xFFF2EFE9),
                       child: ClipRect(
                         child: Stack(
                           children: tileWidgets,
@@ -475,118 +474,25 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
             ),
           ),
 
-          // 2. THE GOOGLE MAPS CENTER PIN (100% visible, centered, and exact)
+          // 2. THE GOOGLE MAPS CENTER PIN (Statically positioned in center of visible map region)
           Positioned(
             left: 0,
             right: 0,
-            top: 0,
-            bottom: 0,
+            top: topBarHeight,
+            bottom: bottomSheetHeight,
             child: IgnorePointer(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final visibleHeight = math.max(100.0, constraints.maxHeight - topBarHeight - bottomSheetHeight);
-                  final pinY = topBarHeight + (visibleHeight / 2);
-
-                  return Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      Positioned(
-                        top: pinY - 80,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // 1. Floating Category Callout Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkCardSurfaceElevated : AppColors.deepGreen,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isDark ? const Color(0xFF34D399) : Colors.white,
-                                  width: 1.5,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black45,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getCategoryIcon(_category),
-                                    color: Colors.white,
-                                    size: 13,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 130),
-                                    child: Text(
-                                      _isDragging
-                                          ? 'Adjusting pin...'
-                                          : (_nameController.text.trim().isNotEmpty
-                                              ? _nameController.text.trim()
-                                              : 'Pinned Location'),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-
-                            // 2. Big Vibrant Red Pin Icon (lifts up while dragging)
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 140),
-                              transform: Matrix4.translationValues(0, _isDragging ? -12 : 0, 0),
-                              child: const Icon(
-                                Icons.location_on_rounded,
-                                size: 54,
-                                color: Color(0xFFE53935), // Google Maps signature red
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black45,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // 3. Ground Shadow / Target Point
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 140),
-                              width: _isDragging ? 12 : 22,
-                              height: _isDragging ? 4 : 7,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(_isDragging ? 35 : 90),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-                },
+              child: Center(
+                child: _GoogleMapsCenterPin(
+                  isDragging: _isDragging,
+                  placeName: _nameController.text,
+                  category: _category,
+                  getCategoryIcon: _getCategoryIcon,
+                ),
               ),
             ),
           ),
 
-          // 3. TOP FLOATING GOOGLE MAPS SEARCH BAR & HEADER
+          // 2. TOP FLOATING GOOGLE MAPS SEARCH BAR & HEADER
           Positioned(
             top: topPadding + 10,
             left: 16,
@@ -596,15 +502,13 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
               children: [
                 // Floating Search Capsule
                 Container(
-                  constraints: const BoxConstraints(minHeight: 52),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCardSurface : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : Colors.transparent),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 55 : 28),
+                        color: Colors.black.withAlpha(28),
                         blurRadius: 14,
                         offset: const Offset(0, 3),
                       ),
@@ -613,35 +517,27 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: Icon(
-                          Icons.arrow_back_rounded,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
-                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.deepGreen),
                         tooltip: 'Back',
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       Expanded(
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               isView ? 'Pinned Location' : 'Pin Desired Location',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
+                              style: const TextStyle(
+                                color: AppColors.deepGreen,
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               isView ? 'OpenStreetMap view' : 'Drag map or select a quick hub below',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -653,10 +549,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                       PopupMenuButton<OsmMapStyle>(
                         initialValue: _activeMapStyle,
                         tooltip: 'Map Layers',
-                        icon: Icon(
-                          Icons.layers_outlined,
-                          color: isDark ? const Color(0xFF34D399) : AppColors.mainGreen,
-                        ),
+                        icon: const Icon(Icons.layers_outlined, color: AppColors.mainGreen),
                         onSelected: (style) {
                           if (style == _activeMapStyle) return;
                           _triggerLoading('Switching to ${style.label}...', 550);
@@ -838,12 +731,11 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                 // Connected Zoom Capsule (+, z indicator, -)
                 Container(
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCardSurface : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : Colors.transparent),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 50 : 22),
+                        color: Colors.black.withAlpha(22),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -853,35 +745,27 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(
-                          Icons.add_rounded,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.add_rounded, color: AppColors.deepGreen, size: 20),
                         tooltip: 'Zoom In',
                         onPressed: () => _changeZoom(1),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurfaceMint : AppColors.surfaceMint,
+                          color: AppColors.surfaceMint,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           'z$_zoomLevel',
-                          style: TextStyle(
-                            color: isDark ? const Color(0xFF34D399) : AppColors.deepGreen,
+                          style: const TextStyle(
+                            color: AppColors.deepGreen,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(
-                          Icons.remove_rounded,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.remove_rounded, color: AppColors.deepGreen, size: 20),
                         tooltip: 'Zoom Out',
                         onPressed: () => _changeZoom(-1),
                       ),
@@ -930,14 +814,11 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
             bottom: 0,
             child: Container(
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCardSurface : Colors.white,
+                color: Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border(
-                  top: BorderSide(color: isDark ? AppColors.darkBorder : Colors.transparent),
-                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(isDark ? 50 : 22),
+                    color: Colors.black.withAlpha(22),
                     blurRadius: 18,
                     offset: const Offset(0, -4),
                   ),
@@ -957,7 +838,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                         height: 4.5,
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkBorderLight : Colors.grey[300],
+                          color: Colors.grey[300],
                           borderRadius: BorderRadius.circular(2.5),
                         ),
                       ),
@@ -982,8 +863,8 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                             children: [
                               Text(
                                 _address,
-                                style: TextStyle(
-                                  color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
+                                style: const TextStyle(
+                                  color: AppColors.deepGreen,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   height: 1.2,
@@ -994,8 +875,8 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                               const SizedBox(height: 3),
                               Text(
                                 '${_latitude.toStringAsFixed(4)}° N, ${_longitude.toStringAsFixed(4)}° E • Davao Commuter Zone',
-                                style: TextStyle(
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1012,43 +893,21 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                       // Modern Place Name Input Field
                       TextField(
                         controller: _nameController,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
-                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.deepGreen),
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           hintText: 'Place name (e.g. My Home, UM Matina, Abreeza)',
                           errorText: _nameError,
-                          prefixIcon: Icon(
-                            Icons.bookmark_outline_rounded,
-                            size: 20,
-                            color: isDark ? const Color(0xFF34D399) : AppColors.mainGreen,
-                          ),
+                          prefixIcon: const Icon(Icons.bookmark_outline_rounded, size: 20, color: AppColors.mainGreen),
                           filled: true,
-                          fillColor: isDark ? AppColors.darkSurfaceMint : AppColors.surfaceMint.withAlpha(120),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: isDark ? const Color(0xFF34D399) : AppColors.mainGreen,
-                              width: 1.8,
-                            ),
-                          ),
+                          fillColor: AppColors.surfaceMint.withAlpha(120),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.border)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.border)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.mainGreen, width: 1.8)),
                         ),
                         onChanged: (_) {
-                          setState(() {
-                            if (_nameError != null) _nameError = null;
-                          });
+                          if (_nameError != null) setState(() => _nameError = null);
                         },
                       ),
 
@@ -1230,16 +1089,13 @@ class _GoogleMapActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCardSurface : Colors.white,
+        color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: isDark ? AppColors.darkBorder : Colors.transparent),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 50 : 22),
+            color: Colors.black.withAlpha(22),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1249,6 +1105,168 @@ class _GoogleMapActionButton extends StatelessWidget {
         icon: Icon(icon, color: iconColor, size: 20),
         tooltip: tooltip,
         onPressed: onTap,
+      ),
+    );
+  }
+}
+
+class _GoogleMapsCenterPin extends StatelessWidget {
+  final bool isDragging;
+  final String placeName;
+  final String category;
+  final IconData Function(String) getCategoryIcon;
+
+  const _GoogleMapsCenterPin({
+    required this.isDragging,
+    required this.placeName,
+    required this.category,
+    required this.getCategoryIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = isDragging
+        ? 'Adjusting pin...'
+        : (placeName.trim().isNotEmpty ? placeName.trim() : 'Pinned Location');
+
+    return SizedBox(
+      width: 160,
+      height: 120,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // 1. Precision Ground Reticle Ring & Center Dot (Static at exact center coordinates)
+          Positioned(
+            bottom: 42,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ground Target Ring
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.coral.withAlpha(35),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.coral, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.coral.withAlpha(55),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.coral,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 1),
+                // Soft Ground Shadow under pin tip
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: isDragging ? 12 : 24,
+                  height: isDragging ? 4 : 6,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(isDragging ? 25 : 75),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. Google Maps Teardrop Pin & Floating Badge (Lifts up on drag)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            bottom: isDragging ? 76 : 60, // Lifts 16px on drag, lands exactly on reticle
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Floating Callout Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepGreen,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(45),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        getCategoryIcon(category),
+                        color: Colors.white,
+                        size: 13,
+                      ),
+                      const SizedBox(width: 5),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+
+                // Teardrop Pin
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 46,
+                      color: Color(0xFFE53935), // Google Maps signature red
+                      shadows: [
+                        Shadow(
+                          color: Colors.black38,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    // Inner white dot
+                    Positioned(
+                      top: 11,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

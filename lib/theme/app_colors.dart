@@ -36,16 +36,4 @@ class AppColors {
   // Tag / Badge colors
   static const Color tagBg = Color(0xFFE9F2EF);
   static const Color tagText = Color(0xFF2C5E58);
-
-  // Dark Theme Palette
-  static const Color darkBackground = Color(0xFF0F1715);
-  static const Color darkCardSurface = Color(0xFF162220);
-  static const Color darkCardSurfaceElevated = Color(0xFF1D2C29);
-  static const Color darkTextPrimary = Color(0xFFF1F6F4);
-  static const Color darkTextSecondary = Color(0xFF9AB2AD);
-  static const Color darkTextMuted = Color(0xFF6B827E);
-  static const Color darkBorder = Color(0xFF243632);
-  static const Color darkBorderLight = Color(0xFF2E4440);
-  static const Color darkSurfaceMint = Color(0xFF1C2C28);
-  static const Color darkLightMint = Color(0xFF1F3530);
 }

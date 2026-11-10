@@ -46,10 +46,9 @@ class SettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
-    final isDark = state.isDarkMode;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Settings'),
         centerTitle: false,
@@ -60,87 +59,16 @@ class SettingsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Appearance (Dark & Light Theme Mode)
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCardSurface : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 30 : 6),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurfaceMint : AppColors.lightMint,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                        color: isDark ? const Color(0xFF34D399) : AppColors.mainGreen,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Appearance',
-                            style: TextStyle(
-                              color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            isDark ? 'Dark Mode (Night View)' : 'Light Mode (Day View)',
-                            style: TextStyle(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: state.isDarkMode,
-                      activeThumbColor: const Color(0xFF34D399),
-                      activeTrackColor: const Color(0xFF1E3A33),
-                      inactiveThumbColor: AppColors.mainGreen,
-                      onChanged: (val) {
-                        state.toggleTheme(val);
-                        NotificationBanner.showInfo(
-                          context,
-                          val ? 'Dark mode enabled' : 'Light mode enabled',
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
               // Concession Discount Card (Student, Senior Citizen, PWD)
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCardSurface : Colors.white,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                  border: Border.all(color: AppColors.border),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 30 : 6),
+                      color: Colors.black.withAlpha(6),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
