@@ -35,15 +35,22 @@ class _PamasaheAppState extends State<PamasaheApp> {
   Widget build(BuildContext context) {
     return AppStateScope(
       notifier: _appState,
-      child: MaterialApp(
-        title: 'Pamasahe — Commute Fare Tracker',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        builder: (context, child) {
-          // Centered responsive shell matching 390x844 mobile screen on larger displays
-          return PhoneFrame(child: child ?? const SizedBox.shrink());
+      child: ListenableBuilder(
+        listenable: _appState,
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'Pamasahe — Commute Fare Tracker',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: _appState.themeMode,
+            builder: (context, child) {
+              // Centered responsive shell matching 390x844 mobile screen on larger displays
+              return PhoneFrame(child: child ?? const SizedBox.shrink());
+            },
+            home: const MainScaffold(),
+          );
         },
-        home: const MainScaffold(),
       ),
     );
   }

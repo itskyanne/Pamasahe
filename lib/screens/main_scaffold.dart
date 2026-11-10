@@ -26,20 +26,23 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
         index: _currentIndex,
         children: _tabs,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            top: BorderSide(color: AppColors.border, width: 1),
+          color: isDark ? AppColors.darkCardSurface : Colors.white,
+          border: Border(
+            top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border, width: 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(8),
+              color: Colors.black.withAlpha(isDark ? 35 : 8),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -131,6 +134,7 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = index == currentIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: onTap,
@@ -138,7 +142,9 @@ class _NavBarItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.lightMint : Colors.transparent,
+          color: isSelected
+              ? (isDark ? AppColors.darkSurfaceMint : AppColors.lightMint)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -147,7 +153,9 @@ class _NavBarItem extends StatelessWidget {
             Icon(
               isSelected ? activeIcon : icon,
               size: 22,
-              color: isSelected ? AppColors.mainGreen : AppColors.textSecondary,
+              color: isSelected
+                  ? (isDark ? const Color(0xFF34D399) : AppColors.mainGreen)
+                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
             ),
             const SizedBox(height: 3),
             Text(
@@ -155,7 +163,9 @@ class _NavBarItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.deepGreen : AppColors.textSecondary,
+                color: isSelected
+                    ? (isDark ? AppColors.darkTextPrimary : AppColors.deepGreen)
+                    : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
               ),
             ),
           ],

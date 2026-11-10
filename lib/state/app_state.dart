@@ -14,6 +14,7 @@ enum DiscountType {
 }
 
 class AppState extends ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.light;
   DiscountType _discountType = DiscountType.student;
   List<SavedPlace> _savedPlaces = [];
   List<SavedRoute> _routes = [];
@@ -33,6 +34,8 @@ class AppState extends ChangeNotifier {
   }
 
   // Getters
+  ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
   DiscountType get discountType => _discountType;
   bool get hasDiscount => _discountType != DiscountType.none;
   bool get studentDiscount => hasDiscount;
@@ -70,6 +73,20 @@ class AppState extends ChangeNotifier {
   List<TransportLine> get lines => List.unmodifiable(_lines);
 
   // Settings
+  void toggleTheme([bool? isDark]) {
+    if (isDark != null) {
+      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    } else {
+      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    }
+    notifyListeners();
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
+
   void setDiscountType(DiscountType type) {
     _discountType = type;
     notifyListeners();
