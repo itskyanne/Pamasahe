@@ -400,12 +400,16 @@ class SettingsTab extends StatelessWidget {
                       children: const [
                         Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.textMuted),
                         SizedBox(width: 4),
-                        Text(
-                          'In-Memory Prototype • v1.0.0',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            'In-Memory Prototype • v1.0.0',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],

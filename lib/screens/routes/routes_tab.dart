@@ -255,11 +255,15 @@ class _RouteCard extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Bottom row: Fare & Travel time
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 // Fare column
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
@@ -304,6 +308,7 @@ class _RouteCard extends StatelessWidget {
 
                 // Travel time badge and steps count
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -312,6 +317,7 @@ class _RouteCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.directions_rounded, color: AppColors.textSecondary, size: 13),
                           const SizedBox(width: 4),
@@ -335,6 +341,7 @@ class _RouteCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.schedule_rounded, color: AppColors.amber, size: 13),
                             const SizedBox(width: 4),

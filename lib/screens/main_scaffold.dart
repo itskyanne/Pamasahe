@@ -37,20 +37,22 @@ class _MainScaffoldState extends State<MainScaffold> {
         color: Colors.white,
         child: SafeArea(
           top: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: Container(
-                height: 70,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                    top: BorderSide(color: charcoal, width: 1),
-                    left: BorderSide(color: charcoal, width: 0.5),
-                    right: BorderSide(color: charcoal, width: 0.5),
+          child: SizedBox(
+            height: 70,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Container(
+                  height: 70,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: charcoal, width: 1),
+                      left: BorderSide(color: charcoal, width: 0.5),
+                      right: BorderSide(color: charcoal, width: 0.5),
+                    ),
                   ),
-                ),
-                child: Row(
+                  child: Row(
                   children: [
                     Expanded(
                       child: _NavBarItem(
@@ -104,6 +106,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ),
       ),
+    ),
     );
   }
 }
