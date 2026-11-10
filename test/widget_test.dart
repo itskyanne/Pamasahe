@@ -21,6 +21,6 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify Spent this week card
-    expect(find.text('Spent this week'), findsOneWidget);
+    expect(find.text('SPENT THIS WEEK'), findsOneWidget);
   });
 }

@@ -503,11 +503,12 @@ class _HomeTabState extends State<HomeTab> {
     );
 
     final savingsCard = _buildStatCard(
-      title: 'STUDENT SAVINGS',
+      title: 'TOTAL SAVED',
       value: CurrencyFormat.format(totalSaved),
-      unit: '20% LTFRB discount',
+      unit: 'with student fare',
       icon: Icons.savings_outlined,
       accentColor: AppColors.mainGreen,
+      isHighlighted: true,
     );
 
     if (isTablet) {
@@ -543,14 +544,18 @@ class _HomeTabState extends State<HomeTab> {
     required String unit,
     required IconData icon,
     required Color accentColor,
+    bool isHighlighted = false,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isHighlighted ? const Color(0xFFEAF4F1) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(
+          color: isHighlighted ? const Color(0xFFBFE3D6) : AppColors.border,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,8 +565,8 @@ class _HomeTabState extends State<HomeTab> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: isHighlighted ? const Color(0xFF0E443C) : AppColors.textSecondary,
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -582,7 +587,7 @@ class _HomeTabState extends State<HomeTab> {
             value,
             style: const TextStyle(
               color: AppColors.deepGreen,
-              fontSize: 17.5,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
             ),
@@ -590,8 +595,8 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: 1),
           Text(
             unit,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: isHighlighted ? const Color(0xFF0E443C).withAlpha(180) : AppColors.textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -656,13 +661,14 @@ class _HomeTabState extends State<HomeTab> {
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              isWeekly ? 'Spent this week' : 'Spent this month',
+                              isWeekly ? 'SPENT THIS WEEK' : 'SPENT THIS MONTH',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Color(0xFFD2E8E1),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ),
@@ -686,17 +692,17 @@ class _HomeTabState extends State<HomeTab> {
                               _showSpendingDetails ? 'Hide details' : 'View details',
                               style: const TextStyle(
                                 color: Color(0xFF98DFB6),
-                                fontSize: 11.5,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 3),
                             Icon(
                               _showSpendingDetails
                                   ? Icons.keyboard_arrow_up_rounded
-                                  : Icons.keyboard_arrow_down_rounded,
+                                  : Icons.chevron_right_rounded,
                               color: const Color(0xFF98DFB6),
-                              size: 15,
+                              size: 16,
                             ),
                           ],
                         ),
@@ -705,50 +711,57 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 Text(
                   CurrencyFormat.format(totalSpent),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 32,
+                    fontSize: 38,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1,
                   ),
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(height: 8),
 
+                // 20% discount checkmark pill & savings amount
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
+                  spacing: 10,
+                  runSpacing: 6,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.mainGreen,
-                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFCDE8DE),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            state.discountType == DiscountType.senior
-                                ? Icons.elderly_rounded
-                                : (state.discountType == DiscountType.pwd
-                                    ? Icons.accessible_rounded
-                                    : Icons.school_rounded),
-                            color: Colors.white,
-                            size: 11,
+                          const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF0E443C),
+                            size: 14,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            state.hasDiscount ? '${state.discountBadgeText} (-20%)' : 'Regular fare',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              state.hasDiscount
+                                  ? (state.discountType == DiscountType.senior
+                                      ? '20% senior discount'
+                                      : (state.discountType == DiscountType.pwd
+                                          ? '20% PWD discount'
+                                          : '20% student discount'))
+                                  : 'Regular fare',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF0E443C),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -759,7 +772,7 @@ class _HomeTabState extends State<HomeTab> {
                         'Saved ${CurrencyFormat.format(totalSaved)}',
                         style: const TextStyle(
                           color: Color(0xFF98DFB6),
-                          fontSize: 11.5,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
