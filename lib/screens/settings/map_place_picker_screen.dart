@@ -440,110 +440,130 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                     ),
 
                     // Google Maps Dropped Pin (stays precisely pinned at centerScreenX, centerScreenY)
-                    IgnorePointer(
-                      child: Positioned(
-                        left: centerScreenX,
-                        top: centerScreenY,
-                        child: SizedBox(
-                          width: 0,
-                          height: 0,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.center,
-                            children: [
-                              // Ground target shadow (shrinks and softens when lifted)
-                              Positioned(
-                                top: -3,
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
-                                  width: _isDragging ? 12 : 22,
-                                  height: _isDragging ? 5 : 8,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withAlpha(_isDragging ? 30 : 70),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
+                    Positioned(
+                      left: centerScreenX,
+                      top: centerScreenY,
+                      child: IgnorePointer(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            // 1. Ground Shadow (shrinks when pin lifts)
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              transform: Matrix4.translationValues(0, _isDragging ? 2 : 0, 0),
+                              width: _isDragging ? 14 : 26,
+                              height: _isDragging ? 6 : 10,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withAlpha(_isDragging ? 30 : 80),
+                                borderRadius: BorderRadius.circular(20),
                               ),
+                            ),
 
-                              // Ground pinpoint reticle dot
-                              Positioned(
-                                top: -3,
+                            // 2. Ground Precision Target Reticle & Ring (shows EXACT point on map)
+                            Container(
+                              width: 18,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: AppColors.coral.withAlpha(35),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.coral, width: 2),
+                              ),
+                              child: Center(
                                 child: Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: const BoxDecoration(
                                     color: AppColors.coral,
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 1.5),
-                                    boxShadow: const [
-                                      BoxShadow(color: Colors.black26, blurRadius: 2),
-                                    ],
                                   ),
                                 ),
                               ),
+                            ),
 
-                              // Pin and Callout Bubble that lifts up smoothly on drag
-                              AnimatedPositioned(
-                                duration: const Duration(milliseconds: 160),
-                                curve: Curves.easeOutCubic,
-                                bottom: _isDragging ? 18 : 0,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Floating callout badge
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.deepGreen,
-                                        borderRadius: BorderRadius.circular(14),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withAlpha(50),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            _getCategoryIcon(_category),
-                                            color: Colors.white,
-                                            size: 12,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            _isDragging
-                                                ? 'Locating...'
-                                                : (_nameController.text.trim().isNotEmpty
-                                                    ? _nameController.text.trim()
-                                                    : 'Dropped Pin'),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-
-                                    // Teardrop Icon
-                                    const Icon(
-                                      Icons.location_on_rounded,
-                                      size: 42,
-                                      color: AppColors.coral,
-                                      shadows: [
-                                        Shadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                            // 3. Google Maps Dropped Pin + Callout Badge (Needle tip points exactly to ground center)
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              curve: Curves.easeOutCubic,
+                              transform: Matrix4.translationValues(0, _isDragging ? -54 : -38, 0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Floating Callout Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.deepGreen,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(50),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _getCategoryIcon(_category),
+                                          color: Colors.white,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          _isDragging
+                                              ? 'Locating...'
+                                              : (_nameController.text.trim().isNotEmpty
+                                                  ? _nameController.text.trim()
+                                                  : 'Dropped Pin'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+
+                                  // Google Maps Teardrop Pin
+                                  Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_rounded,
+                                        size: 48,
+                                        color: Color(0xFFE53935), // Vibrant Google Maps Red
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black38,
+                                            blurRadius: 8,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      // Inner white dot of Google Maps pin
+                                      Positioned(
+                                        top: 12,
+                                        child: Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
