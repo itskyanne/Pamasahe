@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +56,9 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
   // OpenStreetMap interactive state
   bool _isDragging = false;
   bool _isLocating = false;
+  bool _isMapLoading = true;
+  String _loadingStatusText = 'Loading Davao Map...';
+  Timer? _loadingTimer;
   int _zoomLevel = 14; // Street & building level OpenStreetMap zoom (11 to 18)
   OsmMapStyle _activeMapStyle = OsmMapStyle.osmStandard;
   Size _viewportSize = Size.zero;
@@ -143,10 +147,36 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
     _activeMapStyle = OsmMapStyle.osmStandard;
     _category = init?.category ?? 'Home';
     _address = init?.address ?? _findNearestAddress(_latitude, _longitude);
+
+    _isMapLoading = true;
+    _loadingStatusText = 'Loading Davao Map...';
+    _loadingTimer = Timer(const Duration(milliseconds: 650), () {
+      if (mounted) {
+        setState(() {
+          _isMapLoading = false;
+        });
+      }
+    });
+  }
+
+  void _triggerLoading(String statusText, [int durationMs = 500]) {
+    _loadingTimer?.cancel();
+    setState(() {
+      _isMapLoading = true;
+      _loadingStatusText = statusText;
+    });
+    _loadingTimer = Timer(Duration(milliseconds: durationMs), () {
+      if (mounted) {
+        setState(() {
+          _isMapLoading = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _loadingTimer?.cancel();
     _nameController.dispose();
     super.dispose();
   }
@@ -213,8 +243,10 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
   Future<void> _locateUserCurrentPosition() async {
     if (_isLocating) return;
 
+    _loadingTimer?.cancel();
     setState(() {
       _isLocating = true;
+      _loadingStatusText = 'Acquiring GPS location...';
     });
 
     try {
@@ -259,6 +291,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
   }
 
   void _applyPreset(({String name, double lat, double lng, String address, String cat}) preset) {
+    _triggerLoading('Navigating to ${preset.name}...', 450);
     setState(() {
       _latitude = preset.lat;
       _longitude = preset.lng;
@@ -332,7 +365,8 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
   Widget build(BuildContext context) {
     final isView = widget.isViewOnly;
     final topPadding = MediaQuery.of(context).padding.top;
-    final bottomSheetHeight = isView ? 140.0 : 260.0;
+    final topBarHeight = topPadding + (isView ? 62.0 : 108.0);
+    final bottomSheetHeight = isView ? 150.0 : 330.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2EFE9), // OSM land background
@@ -346,8 +380,9 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                 _viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
 
                 // Center coordinates optimized for Google Maps layout (above the bottom sheet)
-                final centerScreenX = _viewportSize.width / 2;
-                final centerScreenY = math.max(120.0, (_viewportSize.height - bottomSheetHeight) / 2 + 10);
+                final visibleHeight = math.max(100.0, constraints.maxHeight - topBarHeight - bottomSheetHeight);
+                final pinScreenX = constraints.maxWidth / 2;
+                final pinScreenY = topBarHeight + (visibleHeight / 2);
 
                 final centerTileX = _lngToTileX(_longitude, _zoomLevel);
                 final centerTileY = _latToTileY(_latitude, _zoomLevel);
@@ -355,8 +390,8 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                 final centerXPixels = centerTileX * 256.0;
                 final centerYPixels = centerTileY * 256.0;
 
-                final vx0 = centerXPixels - centerScreenX;
-                final vy0 = centerYPixels - centerScreenY;
+                final vx0 = centerXPixels - pinScreenX;
+                final vy0 = centerYPixels - pinScreenY;
 
                 final minTileX = (vx0 / 256.0).floor();
                 final maxTileX = ((vx0 + _viewportSize.width) / 256.0).floor();
@@ -397,179 +432,63 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                   }
                 }
 
-                return Stack(
-                  children: [
-                    // Draggable Tile Surface
-                    Listener(
-                      onPointerSignal: (pointerSignal) {
-                        if (pointerSignal is PointerScrollEvent) {
-                          if (pointerSignal.scrollDelta.dy < 0) {
-                            _changeZoom(1);
-                          } else if (pointerSignal.scrollDelta.dy > 0) {
-                            _changeZoom(-1);
-                          }
-                        }
-                      },
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onDoubleTap: () => _changeZoom(1),
-                        onPanStart: (details) {
-                          setState(() {
-                            _isDragging = true;
-                          });
-                        },
-                        onPanUpdate: (details) {
-                          _onPanUpdate(details.delta);
-                        },
-                        onPanEnd: (details) {
-                          setState(() {
-                            _isDragging = false;
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          color: const Color(0xFFF2EFE9),
-                          child: ClipRect(
-                            child: Stack(
-                              children: tileWidgets,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Google Maps Dropped Pin (stays precisely pinned at centerScreenX, centerScreenY)
-                    Positioned(
-                      left: centerScreenX,
-                      top: centerScreenY,
-                      child: IgnorePointer(
+                return Listener(
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      if (pointerSignal.scrollDelta.dy < 0) {
+                        _changeZoom(1);
+                      } else if (pointerSignal.scrollDelta.dy > 0) {
+                        _changeZoom(-1);
+                      }
+                    }
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onDoubleTap: () => _changeZoom(1),
+                    onPanStart: (details) {
+                      setState(() {
+                        _isDragging = true;
+                      });
+                    },
+                    onPanUpdate: (details) {
+                      _onPanUpdate(details.delta);
+                    },
+                    onPanEnd: (details) {
+                      setState(() {
+                        _isDragging = false;
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: double.infinity,
+                      color: const Color(0xFFF2EFE9),
+                      child: ClipRect(
                         child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            // 1. Ground Shadow (shrinks when pin lifts)
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              transform: Matrix4.translationValues(0, _isDragging ? 2 : 0, 0),
-                              width: _isDragging ? 14 : 26,
-                              height: _isDragging ? 6 : 10,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(_isDragging ? 30 : 80),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-
-                            // 2. Ground Precision Target Reticle & Ring (shows EXACT point on map)
-                            Container(
-                              width: 18,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: AppColors.coral.withAlpha(35),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.coral, width: 2),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 5,
-                                  height: 5,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.coral,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // 3. Google Maps Dropped Pin + Callout Badge (Needle tip points exactly to ground center)
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              curve: Curves.easeOutCubic,
-                              transform: Matrix4.translationValues(0, _isDragging ? -54 : -38, 0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Floating Callout Badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.deepGreen,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: Colors.white, width: 1.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withAlpha(50),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          _getCategoryIcon(_category),
-                                          color: Colors.white,
-                                          size: 13,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          _isDragging
-                                              ? 'Locating...'
-                                              : (_nameController.text.trim().isNotEmpty
-                                                  ? _nameController.text.trim()
-                                                  : 'Dropped Pin'),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-
-                                  // Google Maps Teardrop Pin
-                                  Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.location_on_rounded,
-                                        size: 48,
-                                        color: Color(0xFFE53935), // Vibrant Google Maps Red
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.black38,
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      // Inner white dot of Google Maps pin
-                                      Positioned(
-                                        top: 12,
-                                        child: Container(
-                                          width: 10,
-                                          height: 10,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          children: tileWidgets,
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 );
               },
+            ),
+          ),
+
+          // 2. THE GOOGLE MAPS CENTER PIN (Statically positioned in center of visible map region)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: topBarHeight,
+            bottom: bottomSheetHeight,
+            child: IgnorePointer(
+              child: Center(
+                child: _GoogleMapsCenterPin(
+                  isDragging: _isDragging,
+                  placeName: _nameController.text,
+                  category: _category,
+                  getCategoryIcon: _getCategoryIcon,
+                ),
+              ),
             ),
           ),
 
@@ -632,6 +551,8 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
                         tooltip: 'Map Layers',
                         icon: const Icon(Icons.layers_outlined, color: AppColors.mainGreen),
                         onSelected: (style) {
+                          if (style == _activeMapStyle) return;
+                          _triggerLoading('Switching to ${style.label}...', 550);
                           setState(() {
                             _activeMapStyle = style;
                           });
@@ -858,7 +779,7 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
           // 4. FLOATING DRAG HINT PILL
           if (_isDragging)
             Positioned(
-              top: topPadding + 115,
+              top: topBarHeight + 8,
               left: 0,
               right: 0,
               child: Center(
@@ -1062,6 +983,74 @@ class _MapPlacePickerScreenState extends State<MapPlacePickerScreen> {
               ),
             ),
           ),
+
+          // 6. LOADING SCREEN & SWITCHING OVERLAY
+          if (_isMapLoading || _isLocating)
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFFF2EFE9).withAlpha(210),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(25),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: const BoxDecoration(
+                            color: AppColors.surfaceMint,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 26,
+                              height: 26,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.8,
+                                color: AppColors.mainGreen,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _loadingStatusText,
+                          style: const TextStyle(
+                            color: AppColors.deepGreen,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Updating OpenStreetMap street tiles...',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1116,6 +1105,168 @@ class _GoogleMapActionButton extends StatelessWidget {
         icon: Icon(icon, color: iconColor, size: 20),
         tooltip: tooltip,
         onPressed: onTap,
+      ),
+    );
+  }
+}
+
+class _GoogleMapsCenterPin extends StatelessWidget {
+  final bool isDragging;
+  final String placeName;
+  final String category;
+  final IconData Function(String) getCategoryIcon;
+
+  const _GoogleMapsCenterPin({
+    required this.isDragging,
+    required this.placeName,
+    required this.category,
+    required this.getCategoryIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = isDragging
+        ? 'Adjusting pin...'
+        : (placeName.trim().isNotEmpty ? placeName.trim() : 'Pinned Location');
+
+    return SizedBox(
+      width: 160,
+      height: 120,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // 1. Precision Ground Reticle Ring & Center Dot (Static at exact center coordinates)
+          Positioned(
+            bottom: 42,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ground Target Ring
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.coral.withAlpha(35),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.coral, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.coral.withAlpha(55),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.coral,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 1),
+                // Soft Ground Shadow under pin tip
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: isDragging ? 12 : 24,
+                  height: isDragging ? 4 : 6,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(isDragging ? 25 : 75),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. Google Maps Teardrop Pin & Floating Badge (Lifts up on drag)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            bottom: isDragging ? 76 : 60, // Lifts 16px on drag, lands exactly on reticle
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Floating Callout Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepGreen,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(45),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        getCategoryIcon(category),
+                        color: Colors.white,
+                        size: 13,
+                      ),
+                      const SizedBox(width: 5),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+
+                // Teardrop Pin
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 46,
+                      color: Color(0xFFE53935), // Google Maps signature red
+                      shadows: [
+                        Shadow(
+                          color: Colors.black38,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    // Inner white dot
+                    Positioned(
+                      top: 11,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
