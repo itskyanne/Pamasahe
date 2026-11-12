@@ -7,6 +7,12 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: 'Inter',
       scaffoldBackgroundColor: AppColors.background,
+      canvasColor: AppColors.background,
+      cardColor: AppColors.white,
+      highlightColor: Colors.transparent,
+      splashColor: AppColors.lightMint,
+      focusColor: Colors.transparent,
+      hoverColor: Colors.transparent,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.mainGreen,
         primary: AppColors.mainGreen,

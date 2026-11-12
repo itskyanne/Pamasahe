@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../models/ride_type.dart';
 import '../../models/transport_line.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/ride_icon_badge.dart';
-import 'add_edit_line_screen.dart';
 import 'line_detail_screen.dart';
 
 class LinesTab extends StatefulWidget {
@@ -15,194 +12,365 @@ class LinesTab extends StatefulWidget {
 }
 
 class _LinesTabState extends State<LinesTab> {
-  final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
 
-  final List<String> _filters = [
+  final List<String> _filters = const [
     'All',
     'Jeepney',
     'Bus',
-    'P2P bus',
-    'UV Express',
     'Train',
-    'Ferry',
   ];
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  static const List<Color> _defaultColors = [
+    Color(0xFFFFB800), // Yellow
+    Color(0xFF5B8DEF), // Blue
+    Color(0xFFFF6584), // Pink
+    Color(0xFF1F8A4C), // Green
+  ];
+
+  void _openLineDetailScreen(BuildContext context, TransportLine line) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => LineDetailScreen(line: line),
+      ),
+    );
+  }
+
+  String _getLineCode(TransportLine line, int index) {
+    if (line.code != null && line.code!.isNotEmpty) {
+      return line.code!;
+    }
+    final prefix = line.rideType.isNotEmpty ? line.rideType[0].toUpperCase() : 'L';
+    return '$prefix${(index + 1).toString().padLeft(2, '0')}';
+  }
+
+  String _getRideTypeLabel(TransportLine line) {
+    final lower = line.rideType.toLowerCase();
+    if (lower.contains('train')) return 'TRAIN';
+    if (lower.contains('bus')) return 'BUS';
+    if (lower.contains('jeep')) return 'JEEPNEY';
+    if (lower.contains('trike') || lower.contains('tricycle')) return 'TRICYCLE';
+    if (lower.contains('uv')) return 'UV EXPRESS';
+    return line.rideType.toUpperCase();
+  }
+
+  String _getRouteCoverage(TransportLine line) {
+    if (line.routeCoverage != null && line.routeCoverage!.isNotEmpty) {
+      return line.routeCoverage!;
+    }
+    if (line.stops.isNotEmpty) {
+      return line.stops.take(3).join(' → ');
+    }
+    if (line.via.isNotEmpty) {
+      return '${line.origin} → ${line.via} → ${line.destination}';
+    }
+    return '${line.origin} → ${line.destination}';
+  }
+
+  String _getFrequency(TransportLine line) {
+    if (line.frequency != null && line.frequency!.isNotEmpty) {
+      return line.frequency!;
+    }
+    return 'Every 10–15 min';
+  }
+
+  String _getStatus(TransportLine line) {
+    return line.status ?? 'Operating';
+  }
+
+  Color _getLineColor(TransportLine line, int index) {
+    if (line.color != null) return line.color!;
+    return _defaultColors[index % _defaultColors.length];
+  }
+
+  List<TransportLine> _filterLines(List<TransportLine> allLines) {
+    if (_selectedFilter == 'All') return allLines;
+
+    final filterLower = _selectedFilter.toLowerCase();
+    return allLines.where((line) {
+      final typeLower = line.rideType.toLowerCase();
+      if (filterLower == 'train') {
+        return typeLower.contains('train') || line.name.toLowerCase().contains('train');
+      }
+      if (filterLower == 'bus') {
+        return typeLower.contains('bus');
+      }
+      if (filterLower == 'jeepney') {
+        return typeLower.contains('jeep');
+      }
+      return typeLower == filterLower;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     final allLines = state.lines;
-
-    // Filter logic
-    final query = _searchController.text.trim().toLowerCase();
-    final filteredLines = allLines.where((line) {
-      // Search match
-      final matchesSearch = query.isEmpty ||
-          line.name.toLowerCase().contains(query) ||
-          line.origin.toLowerCase().contains(query) ||
-          line.destination.toLowerCase().contains(query) ||
-          line.via.toLowerCase().contains(query);
-
-      // Filter chip match
-      bool matchesFilter = true;
-      if (_selectedFilter == 'All') {
-        matchesFilter = true;
-      } else if (_selectedFilter == 'Train') {
-        matchesFilter = line.rideType.contains('train') || line.rideType.contains('Train');
-      } else {
-        matchesFilter = line.rideType.toLowerCase() == _selectedFilter.toLowerCase();
-      }
-
-      return matchesSearch && matchesFilter;
-    }).toList();
+    final filteredLines = _filterLines(allLines);
+    final operatingCount = filteredLines
+        .where((l) => _getStatus(l).toLowerCase() == 'operating')
+        .length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Transport Lines'),
-        centerTitle: false,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const AddEditLineScreen(),
-            ),
-          );
-        },
-        backgroundColor: AppColors.mainGreen,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded, size: 24),
-        label: const Text(
-          'New Line',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Search Input
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search jeepney or bus name',
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: AppColors.textMuted),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                        )
-                      : null,
-                ),
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 600;
+            final horizontalPadding = isTablet ? 24.0 : 16.0;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: horizontalPadding,
+                right: horizontalPadding,
+                top: 14,
+                bottom: 100,
               ),
-            ),
-
-            // Filter Chips Bar
-            SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _filters.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final filter = _filters[index];
-                  final isSelected = _selectedFilter == filter;
-
-                  return FilterChip(
-                    label: Text(filter),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedFilter = filter;
-                      });
-                    },
-                    selectedColor: AppColors.lightMint,
-                    checkmarkColor: AppColors.mainGreen,
-                    backgroundColor: Colors.white,
-                    side: BorderSide(
-                      color: isSelected ? AppColors.mainGreen : AppColors.border,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
+                  const Text(
+                    'Pamasahe',
+                    style: TextStyle(
+                      color: AppColors.deepGreen,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
-                    labelStyle: TextStyle(
-                      color: isSelected ? AppColors.deepGreen : AppColors.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 12,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 2. PAGE HEADER
+                  const Text(
+                    'PUBLIC TRANSPORT',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: Color(0xFF165B47),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
 
-            const SizedBox(height: 12),
+                  const SizedBox(height: 4),
 
-            // Lines List or Empty State
-            Expanded(
-              child: filteredLines.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
+                  const Text(
+                    'Lines',
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.9,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  const Text(
+                    'Browse nearby transport lines and check their current service status.',
+                    style: TextStyle(
+                      color: Color(0xFF5A726E),
+                      fontSize: 14,
+                      height: 1.35,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // 3. TRANSPORT FILTERS
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: _filters.map((filter) {
+                        final isSelected = _selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: InkWell(
+                            onTap: () {
+                              if (_selectedFilter != filter) {
+                                setState(() {
+                                  _selectedFilter = filter;
+                                });
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.lightMint,
+                                color: isSelected
+                                    ? const Color(0xFF1E1E1E)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF1E1E1E)
+                                      : const Color(0xFFE5E7EB),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              child: const Icon(
-                                Icons.search_off_rounded,
-                                color: AppColors.textMuted,
-                                size: 32,
+                              child: Text(
+                                filter,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1F2937),
+                                  fontSize: 13,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No lines match. Try another name.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.deepGreen,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 4. AVAILABLE LINES SECTION HEADING
+                  const Text(
+                    'NEAR YOU',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: Color(0xFF8DA39F),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Flexible(
+                        child: Text(
+                          'Available lines',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF111827),
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Text(
+                        operatingCount > 0
+                            ? '$operatingCount operating'
+                            : '${filteredLines.length} available',
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: Color(0xFF6B7280),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // 5. TRANSPORT LINE CARDS
+                  if (filteredLines.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 36,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: const Color(0xFFE5ECE8)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF3F4F6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.directions_bus_filled_outlined,
+                              color: Color(0xFF6B7280),
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'No lines found',
+                            style: TextStyle(
+                              color: Color(0xFF111827),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'No transport services currently match the "$_selectedFilter" category.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF5A726E),
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 80),
-                      itemCount: filteredLines.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final line = filteredLines[index];
-                        return _LineCard(
+                  else
+                    ...List.generate(filteredLines.length, (index) {
+                      final line = filteredLines[index];
+                      final code = _getLineCode(line, index);
+                      final rideType = _getRideTypeLabel(line);
+                      final routeCoverage = _getRouteCoverage(line);
+                      final frequency = _getFrequency(line);
+                      final status = _getStatus(line);
+                      final color = _getLineColor(line, index);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _LineCard(
                           line: line,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => LineDetailScreen(line: line),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
+                          code: code,
+                          rideType: rideType,
+                          routeCoverage: routeCoverage,
+                          frequency: frequency,
+                          status: status,
+                          color: color,
+                          onTap: () => _openLineDetailScreen(context, line),
+                        ),
+                      );
+                    }),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -211,195 +379,221 @@ class _LinesTabState extends State<LinesTab> {
 
 class _LineCard extends StatelessWidget {
   final TransportLine line;
+  final String code;
+  final String rideType;
+  final String routeCoverage;
+  final String frequency;
+  final String status;
+  final Color color;
   final VoidCallback onTap;
 
-  const _LineCard({required this.line, required this.onTap});
+  const _LineCard({
+    required this.line,
+    required this.code,
+    required this.rideType,
+    required this.routeCoverage,
+    required this.frequency,
+    required this.status,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(6),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    final isOperating = status.toLowerCase() == 'operating';
+    // Dark slate text for bright badges, white text for darker greens
+    final codeTextColor = (color.r * 255 * 0.299 +
+                color.g * 255 * 0.587 +
+                color.b * 255 * 0.114) >
+            150
+        ? const Color(0xFF1E2825)
+        : Colors.white;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFE5ECE8),
+          width: 1,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top row: Icon + Name + Tags
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                RideIconBadge(rideType: line.rideType, size: 40, iconSize: 22),
-                const SizedBox(width: 12),
+                // 1. Line Code Block
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      code,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: codeTextColor,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 14),
+
+                // 2. Route Information
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        line.name,
+                        rideType,
                         style: const TextStyle(
-                          color: AppColors.deepGreen,
-                          fontSize: 15,
+                          fontFamily: 'monospace',
+                          fontSize: 9.5,
+                          color: Color(0xFF6B7280),
+                          letterSpacing: 0.8,
                           fontWeight: FontWeight.w700,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        line.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        line.rideType,
-                        style: TextStyle(
-                          color: RideType.getColor(line.rideType),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Badges
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (line.isLoop)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightMint,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Full loop',
-                          style: TextStyle(
-                            color: AppColors.mainGreen,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceMint,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'One way',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    if (line.isSample)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Sample data',
-                          style: TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Origin -> Destination
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 7, color: AppColors.mainGreen),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${line.origin} → ${line.destination}',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-
-            if (line.via.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.only(left: 13),
-                child: Text(
-                  'via ${line.via}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 10),
-            const Divider(color: AppColors.borderLight, height: 1),
-            const SizedBox(height: 8),
-
-            // Bottom distance
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (line.distanceKm != null)
-                  Row(
-                    children: [
-                      const Icon(Icons.straighten_rounded, size: 14, color: AppColors.amber),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Approx. ${line.distanceKm} km',
+                        routeCoverage,
                         style: const TextStyle(
-                          color: AppColors.amber,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5,
+                          color: Color(0xFF6B7280),
+                          height: 1.3,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      // Status and Frequency Row
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          // Status Pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOperating
+                                  ? const Color(0xFFD6F5E3)
+                                  : const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isOperating
+                                    ? const Color(0xFFBCEBD0)
+                                    : const Color(0xFFFDE68A),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: isOperating
+                                        ? const Color(0xFF1F8A4C)
+                                        : const Color(0xFFD97706),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  status,
+                                  style: TextStyle(
+                                    color: isOperating
+                                        ? const Color(0xFF165B47)
+                                        : const Color(0xFF92400E),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Frequency Text
+                          Text(
+                            frequency,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10.5,
+                              color: Color(0xFF6B7280),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  )
-                else
-                  const SizedBox.shrink(),
-                const Text(
-                  'Details →',
-                  style: TextStyle(
-                    color: AppColors.mainGreen,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 3. Details Circular Action Button
+                InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1.2,
+                      ),
+                      color: Colors.transparent,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

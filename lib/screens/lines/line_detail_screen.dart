@@ -188,7 +188,9 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
                             children: [
                               Text(
                                 CurrencyFormat.format(effectiveFare),
@@ -198,8 +200,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              if (state.hasDiscount) ...[
-                                const SizedBox(width: 6),
+                              if (state.hasDiscount)
                                 Text(
                                   CurrencyFormat.format(metrics.regularFare),
                                   style: const TextStyle(
@@ -208,7 +209,6 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                                     decoration: TextDecoration.lineThrough,
                                   ),
                                 ),
-                              ],
                             ],
                           ),
                           Text(
@@ -224,7 +224,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).push(
@@ -238,11 +238,12 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.alt_route_rounded, size: 18),
+                      icon: const Icon(Icons.alt_route_rounded, size: 16),
                       label: const Text('Use in a route'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.mainGreen,
-                        minimumSize: const Size(150, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        minimumSize: const Size(120, 44),
                       ),
                     ),
                   ],
@@ -324,8 +325,31 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        RideIconBadge(rideType: currentLine.rideType, size: 48, iconSize: 26),
-                        const SizedBox(width: 14),
+                        if (currentLine.code != null && currentLine.code!.isNotEmpty) ...[
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: currentLine.color ?? AppColors.mainGreen,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Center(
+                              child: Text(
+                                currentLine.code!,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                        ] else ...[
+                          RideIconBadge(rideType: currentLine.rideType, size: 48, iconSize: 26),
+                          const SizedBox(width: 14),
+                        ],
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +363,10 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Row(
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
                                 children: [
                                   Text(
                                     currentLine.rideType,
@@ -349,8 +376,28 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                                       fontSize: 13,
                                     ),
                                   ),
+                                  if (currentLine.status != null) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: currentLine.status!.toLowerCase() == 'operating'
+                                            ? const Color(0xFFD6F5E3)
+                                            : const Color(0xFFFEF3C7),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        currentLine.status!,
+                                        style: TextStyle(
+                                          color: currentLine.status!.toLowerCase() == 'operating'
+                                              ? const Color(0xFF165B47)
+                                              : const Color(0xFF92400E),
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   if (currentLine.isSample) ...[
-                                    const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
@@ -379,8 +426,63 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                     const Divider(color: AppColors.borderLight, height: 1),
                     const SizedBox(height: 14),
 
+                    // Route Coverage
+                    const Text(
+                      'ROUTE COVERAGE',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        color: AppColors.mainGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      currentLine.routeCoverage ??
+                          (stops.isNotEmpty ? stops.join(' → ') : '${currentLine.origin} → ${currentLine.destination}'),
+                      style: const TextStyle(
+                        color: AppColors.deepGreen,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Service Interval
+                    if (currentLine.frequency != null && currentLine.frequency!.isNotEmpty) ...[
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: 'SERVICE INTERVAL: ',
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                color: AppColors.mainGreen,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            TextSpan(
+                              text: currentLine.frequency!,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                color: AppColors.deepGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // Circuit Type & Distance
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -389,6 +491,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 currentLine.isLoop ? Icons.sync_rounded : Icons.trending_flat_rounded,
@@ -407,8 +510,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                             ],
                           ),
                         ),
-                        if (currentLine.distanceKm != null) ...[
-                          const SizedBox(width: 8),
+                        if (currentLine.distanceKm != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
@@ -416,6 +518,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(Icons.straighten_rounded, size: 16, color: AppColors.amber),
                                 const SizedBox(width: 6),
@@ -430,7 +533,6 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                               ],
                             ),
                           ),
-                        ],
                       ],
                     ),
 
@@ -498,14 +600,16 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
 
               // Waypoint Selection Instruction & Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Key Stops & Waypoints',
-                    style: TextStyle(
-                      color: AppColors.deepGreen,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
+                  const Expanded(
+                    child: Text(
+                      'Key Stops & Waypoints',
+                      style: TextStyle(
+                        color: AppColors.deepGreen,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (_selectedStopA != null || _selectedStopB != null)
@@ -782,21 +886,19 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                     children: [
                       // Header
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.calculate_rounded, color: AppColors.mainGreen, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Estimated Segment Fare',
-                                style: TextStyle(
-                                  color: AppColors.deepGreen,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                          const Icon(Icons.calculate_rounded, color: AppColors.mainGreen, size: 20),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Estimated Segment Fare',
+                              style: TextStyle(
+                                color: AppColors.deepGreen,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
                               ),
-                            ],
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           InkWell(
                             onTap: _clearSelection,
@@ -892,10 +994,11 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                       const SizedBox(height: 16),
 
                       // Price Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -910,6 +1013,7 @@ class _LineDetailScreenState extends State<LineDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                               Row(
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [

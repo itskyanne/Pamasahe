@@ -10,9 +10,9 @@ void main() {
     test('Initial data loads with correct routes, trips, and initial weekly total', () {
       final state = AppState();
 
-      expect(state.routes.length, 3);
+      expect(state.routes.length, 4);
       expect(state.trips.length, 4);
-      expect(state.savedPlaces, ['Home', 'School', 'Mall']);
+      expect(state.savedPlaces, ['Home', 'School', 'Mall', 'City Library']);
       expect(state.studentDiscount, isTrue);
 
       // Initial trips: 26.40 + 26.40 + 10.40 + 26.40 = 89.60
@@ -42,7 +42,7 @@ void main() {
 
     test('Reverse route swaps From/To, reverses steps, and adds (return) to name', () {
       final state = AppState();
-      final original = state.routes.first; // Home to School (jeep)
+      final original = state.routes.first; // Home to School
       final returnRoute = state.reverseRoute(original);
 
       expect(returnRoute.name, '${original.name} (return)');
@@ -60,7 +60,7 @@ void main() {
 
       state.logTrip(
         routeId: 1,
-        routeName: 'Home to School (jeep)',
+        routeName: 'Home to School',
         amount: 26.40,
         date: 'Nov 6, 2026',
       );
@@ -81,7 +81,7 @@ void main() {
       expect(state.trips.length, tripCount);
     });
 
-    test('Adding and deleting saved places with map location pinning', () {
+    test('Adding, editing, and deleting saved places with map location pinning', () {
       final state = AppState();
 
       const newPlace = SavedPlace(
@@ -96,8 +96,19 @@ void main() {
       expect(state.savedPlaces.contains('Dormitory'), isTrue);
       expect(state.savedPlaceObjects.any((p) => p.name == 'Dormitory' && p.latitude == 7.0780), isTrue);
 
-      state.deleteSavedPlace('Dormitory');
+      // Edit the saved place
+      final updatedPlace = newPlace.copyWith(
+        name: 'New Dormitory',
+        address: 'Roxas Ave, Davao City',
+        category: 'Work',
+      );
+      state.updateSavedPlaceItem('Dormitory', updatedPlace);
+      expect(state.savedPlaces.contains('New Dormitory'), isTrue);
       expect(state.savedPlaces.contains('Dormitory'), isFalse);
+      expect(state.savedPlaceObjects.firstWhere((p) => p.name == 'New Dormitory').category, 'Work');
+
+      state.deleteSavedPlace('New Dormitory');
+      expect(state.savedPlaces.contains('New Dormitory'), isFalse);
     });
 
     test('Student, Senior Citizen, and PWD discounts apply correctly', () {

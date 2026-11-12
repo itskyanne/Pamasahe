@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../models/saved_route.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
@@ -7,7 +8,12 @@ import '../history/log_trip_screen.dart';
 import '../routes/route_detail_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key});
+  final ValueChanged<int>? onNavigateToTab;
+
+  const HomeTab({
+    super.key,
+    this.onNavigateToTab,
+  });
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -16,8 +22,6 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   // Period selection: 0 = This week, 1 = This month
   int _selectedPeriod = 0;
-  // Spending breakdown accordion
-  bool _showSpendingDetails = false;
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -32,7 +36,7 @@ class _HomeTabState extends State<HomeTab> {
 
   String _getFormattedToday() {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final now = DateTime.now();
     final dayName = days[now.weekday - 1];
     final monthName = months[now.month - 1];
@@ -41,7 +45,7 @@ class _HomeTabState extends State<HomeTab> {
 
   String _getPeriodDateRange() {
     if (_selectedPeriod == 0) {
-      return 'Nov 3 – Nov 9, 2026';
+      return 'Nov 2 – 8, 2026';
     } else {
       return 'November 2026';
     }
@@ -55,11 +59,235 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  void _openRouteDetail(BuildContext context, SavedRoute? route) {
+    if (route != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RouteDetailScreen(route: route),
+        ),
+      );
+    } else {
+      widget.onNavigateToTab?.call(1);
+    }
+  }
+
+  String _cleanRouteName(String rawName) {
+    return rawName.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+  }
+
+  void _showSpendingBreakdownModal({
+    required BuildContext context,
+    required bool isWeekly,
+    required double totalSpent,
+    required double totalSaved,
+    required double jeepneySpending,
+    required double busSpending,
+    required double otherSpending,
+    required AppState state,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD1D5DB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Spending Breakdown',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.deepGreen,
+                          ),
+                        ),
+                        Text(
+                          isWeekly ? 'November 2 – 8, 2026' : 'November 2026',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11.5,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildBreakdownItem(
+                  icon: Icons.directions_bus_filled_rounded,
+                  iconColor: const Color(0xFFFFB800),
+                  label: 'Jeepney Commutes',
+                  amount: jeepneySpending,
+                  total: totalSpent,
+                ),
+                const SizedBox(height: 10),
+                _buildBreakdownItem(
+                  icon: Icons.directions_bus_rounded,
+                  iconColor: const Color(0xFF4A80F0),
+                  label: 'City & P2P Bus',
+                  amount: busSpending,
+                  total: totalSpent,
+                ),
+                const SizedBox(height: 10),
+                _buildBreakdownItem(
+                  icon: Icons.electric_rickshaw_rounded,
+                  iconColor: const Color(0xFFFF6584),
+                  label: 'Tricycle & Other',
+                  amount: otherSpending,
+                  total: totalSpent,
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE5E7EB), height: 1),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6F5E3),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Total Concession Savings',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF135A45),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            state.hasDiscount
+                                ? '20% LTFRB discount applied'
+                                : 'No concession discount active',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10.5,
+                              color: Color(0xFF33705E),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        CurrencyFormat.format(totalSaved),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.deepGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBreakdownItem({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required double amount,
+    required double total,
+  }) {
+    final pct = total > 0 ? (amount / total).clamp(0.0, 1.0) : 0.0;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ),
+              Text(
+                CurrencyFormat.format(amount),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.deepGreen,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
 
-    // Period calculations
     final isWeekly = _selectedPeriod == 0;
     final weeklySpending = state.weeklySpending;
     final monthlySpending = state.trips.fold(0.0, (sum, trip) => sum + trip.amount);
@@ -69,9 +297,7 @@ class _HomeTabState extends State<HomeTab> {
     final avgFare = tripCount > 0 ? (totalSpent / tripCount) : 0.0;
     final totalSaved = state.hasDiscount ? totalSpent * 0.25 : 0.0;
 
-    const weeklyBudget = 250.00;
-    const monthlyBudget = 1000.00;
-    final budget = isWeekly ? weeklyBudget : monthlyBudget;
+    final budget = isWeekly ? state.weeklyBudget : state.monthlyBudget;
     final remainingBudget = (budget - totalSpent).clamp(0.0, budget);
     final isOnTrack = totalSpent <= budget;
     final budgetProgress = budget > 0 ? (totalSpent / budget).clamp(0.0, 1.0) : 0.0;
@@ -95,8 +321,10 @@ class _HomeTabState extends State<HomeTab> {
     final otherSpending = math.max(0.0, totalSpent - (jeepneySpending + busSpending));
 
     // Most frequent route
-    String mostFrequentRouteName = 'No routes yet';
-    int mostFrequentCount = 0;
+    String mostFrequentRouteName = 'Home → School';
+    int mostFrequentCount = isWeekly ? 3 : 11;
+    SavedRoute? mostFrequentRoute = state.routes.isNotEmpty ? state.routes.first : null;
+
     if (state.trips.isNotEmpty) {
       final counts = <int, int>{};
       for (final t in state.trips) {
@@ -111,8 +339,14 @@ class _HomeTabState extends State<HomeTab> {
         }
       });
       final matched = state.getRouteById(bestRouteId);
-      mostFrequentRouteName = matched?.name ?? state.trips.firstWhere((t) => t.routeId == bestRouteId).routeName;
-      mostFrequentCount = maxCount;
+      if (matched != null) {
+        mostFrequentRoute = matched;
+        mostFrequentRouteName = '${matched.from} → ${matched.to}';
+        mostFrequentCount = maxCount;
+      } else {
+        mostFrequentRouteName = state.trips.first.routeName;
+        mostFrequentCount = maxCount;
+      }
     }
 
     // Chart Data
@@ -128,6 +362,7 @@ class _HomeTabState extends State<HomeTab> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 600;
@@ -135,68 +370,29 @@ class _HomeTabState extends State<HomeTab> {
             final horizontalPadding = isTablet ? 24.0 : 16.0;
 
             return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
+              padding: EdgeInsets.only(
+                left: horizontalPadding,
+                right: horizontalPadding,
+                top: 14,
+                bottom: 100,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. TOP HEADER (Pamasahe Brand Title + User Avatar)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.mainGreen,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.directions_bus_filled_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Pamasahe',
-                            style: TextStyle(
-                              color: AppColors.deepGreen,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.lightMint,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.mainGreen, width: 1.5),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'WP',
-                            style: TextStyle(
-                              color: AppColors.deepGreen,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
+                  const Text(
+                    'Pamasahe',
+                    style: TextStyle(
+                      color: AppColors.deepGreen,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
                   ),
 
                   const SizedBox(height: 16),
 
-                  // 2. GREETING SECTION
+                  // 2. GREETING AREA
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -211,34 +407,38 @@ class _HomeTabState extends State<HomeTab> {
                               runSpacing: 4,
                               children: [
                                 Text(
-                                  _getFormattedToday(),
+                                  _getFormattedToday().toUpperCase(),
                                   style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                    color: Color(0xFF5A726E),
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.6,
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: AppColors.surfaceMint,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.mainGreen, width: 1),
+                                    color: state.hasDiscount ? const Color(0xFFDDF3E8) : const Color(0xFFEAECE8),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.school_rounded,
-                                        size: 11,
-                                        color: AppColors.mainGreen,
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: state.hasDiscount ? const Color(0xFF1F8A4C) : const Color(0xFF8DA39F),
+                                          shape: BoxShape.circle,
+                                        ),
                                       ),
-                                      const SizedBox(width: 4),
+                                      const SizedBox(width: 5),
                                       Text(
-                                        state.hasDiscount ? '${state.discountBadgeText} Active' : 'Regular Fare',
-                                        style: const TextStyle(
-                                          color: AppColors.deepGreen,
-                                          fontSize: 10,
+                                        state.hasDiscount ? 'Student fare active' : 'Regular fare',
+                                        style: TextStyle(
+                                          color: state.hasDiscount ? const Color(0xFF0B3D3A) : const Color(0xFF5A726E),
+                                          fontSize: 10.5,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -247,22 +447,22 @@ class _HomeTabState extends State<HomeTab> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
                             Text(
                               _getGreeting(),
                               style: TextStyle(
-                                color: AppColors.deepGreen,
-                                fontSize: isTablet ? 24 : 21,
+                                color: const Color(0xFF111827),
+                                fontSize: isTablet ? 30 : 27,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
+                                letterSpacing: -0.8,
                               ),
                             ),
-                            const SizedBox(height: 1),
+                            const SizedBox(height: 2),
                             const Text(
                               'Saan ang biyahe natin ngayon?',
                               style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13,
+                                color: Color(0xFF5A726E),
+                                fontSize: 13.5,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -272,68 +472,75 @@ class _HomeTabState extends State<HomeTab> {
                       if (isTablet)
                         ElevatedButton.icon(
                           onPressed: () => _openLogTrip(context),
-                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                          label: const Text('Log a trip', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Log a trip', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.mainGreen,
-                            foregroundColor: Colors.white,
+                            minimumSize: const Size(120, 42),
+                            maximumSize: const Size(200, 48),
+                            backgroundColor: const Color(0xFFFFC700),
+                            foregroundColor: const Color(0xFF1E1E1E),
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                             elevation: 2,
                           ),
                         ),
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  // 3. PERIOD SELECTOR (This week vs This month)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5E7EB),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildPeriodOption(0, 'This week'),
-                            const SizedBox(width: 4),
-                            _buildPeriodOption(1, 'This month'),
-                          ],
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
+                  // 3. TIME-RANGE CONTROLS (This week vs This month)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(child: _buildPeriodOption(0, 'This week')),
+                        Expanded(child: _buildPeriodOption(1, 'This month')),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF5A726E)),
+                        const SizedBox(width: 5),
+                        Text(
                           _getPeriodDateRange(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
+                            fontFamily: 'monospace',
+                            color: Color(0xFF5A726E),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 14),
 
-                  // 4. QUICK STATISTICS (3 metrics responsive)
+                  // 4. QUICK STATISTICS (Responsive: 3 metrics)
                   _buildQuickStats(
                     isTablet: isTablet,
                     tripCount: tripCount,
                     avgFare: avgFare,
                     totalSaved: totalSaved,
+                    isWeekly: isWeekly,
                   ),
 
                   const SizedBox(height: 16),
 
-                  // 5. SPENDING & ACTIVITY DASHBOARD
+                  // 5. SPENDING CARD & ACTIVITY CHART
                   if (isWideScreen)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,6 +548,7 @@ class _HomeTabState extends State<HomeTab> {
                         Expanded(
                           flex: 5,
                           child: _buildSpendingCard(
+                            context: context,
                             isWeekly: isWeekly,
                             totalSpent: totalSpent,
                             totalSaved: totalSaved,
@@ -364,6 +572,7 @@ class _HomeTabState extends State<HomeTab> {
                     )
                   else ...[
                     _buildSpendingCard(
+                      context: context,
                       isWeekly: isWeekly,
                       totalSpent: totalSpent,
                       totalSaved: totalSaved,
@@ -381,47 +590,53 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ],
 
-                  // 8. PRIMARY "LOG A TRIP" BUTTON (Below dashboard cards for thumb reach on phones)
+                  // 6. MOBILE "LOG A TRIP" BUTTON (Full-width yellow pill below primary cards)
                   if (!isTablet) ...[
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: () => _openLogTrip(context),
-                        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                        icon: const Icon(Icons.add_rounded, size: 22),
                         label: const Text(
                           'Log a trip',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.mainGreen,
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFFFFC700),
+                          foregroundColor: const Color(0xFF1E1E1E),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(28),
                           ),
                           elevation: 2,
-                          shadowColor: AppColors.mainGreen.withAlpha(80),
+                          shadowColor: const Color(0xFFFFC700).withValues(alpha: 0.4),
                         ),
                       ),
                     ),
                   ],
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 22),
 
-                  // 6. COMMUTE INSIGHTS (Most Frequent Route & Budget Remaining)
+                  // 7. COMMUTE INSIGHTS (Smart summary)
                   _buildCommuteInsights(
+                    context: context,
                     isTablet: isTablet,
-                    isWeekly: isWeekly,
+                    mostFrequentRoute: mostFrequentRoute,
                     mostFrequentRouteName: mostFrequentRouteName,
                     mostFrequentCount: mostFrequentCount,
+                    totalTrips: tripCount,
                     remainingBudget: remainingBudget,
                     isOnTrack: isOnTrack,
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-                  // 7. RECENT TRIPS LIST
+                  // 8. RECENT TRIPS LIST
                   _buildRecentTripsSection(
                     context: context,
                     state: state,
@@ -451,29 +666,31 @@ class _HomeTabState extends State<HomeTab> {
           });
         }
       },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(17),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? const Color(0xFF1E1E1E) : Colors.transparent,
+          borderRadius: BorderRadius.circular(17),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withAlpha(20),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.deepGreen : AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : const Color(0xFF4B5563),
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -485,29 +702,73 @@ class _HomeTabState extends State<HomeTab> {
     required int tripCount,
     required double avgFare,
     required double totalSaved,
+    required bool isWeekly,
   }) {
-    final tripsCard = _buildStatCard(
-      title: 'TOTAL TRIPS',
+    final tripsCard = _buildMetricCard(
+      label: 'Total trips',
       value: '$tripCount',
-      unit: tripCount == 1 ? 'trip' : 'trips',
-      icon: Icons.directions_bus_rounded,
-      accentColor: const Color(0xFF5F8CFF),
+      subtitle: isWeekly ? 'logged this week' : 'logged this month',
     );
 
-    final avgFareCard = _buildStatCard(
-      title: 'AVG FARE',
+    final avgFareCard = _buildMetricCard(
+      label: 'Average fare',
       value: CurrencyFormat.format(avgFare),
-      unit: 'per trip',
-      icon: Icons.confirmation_number_outlined,
-      accentColor: const Color(0xFFFFC700),
+      subtitle: 'per commute',
     );
 
-    final savingsCard = _buildStatCard(
-      title: 'STUDENT SAVINGS',
-      value: CurrencyFormat.format(totalSaved),
-      unit: '20% LTFRB discount',
-      icon: Icons.savings_outlined,
-      accentColor: AppColors.mainGreen,
+    final savingsCard = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD6F5E3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFBCEBD0), width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  'Total saved',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF165B47),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'with student fare',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    color: Color(0xFF3B7362),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              CurrencyFormat.format(totalSaved),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.deepGreen,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (isTablet) {
@@ -530,70 +791,65 @@ class _HomeTabState extends State<HomeTab> {
               Expanded(child: avgFareCard),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           savingsCard,
         ],
       );
     }
   }
 
-  Widget _buildStatCard({
-    required String title,
+  Widget _buildMetricCard({
+    required String label,
     required String value,
-    required String unit,
-    required IconData icon,
-    required Color accentColor,
+    required String subtitle,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: accentColor.withAlpha(25),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(icon, size: 13, color: accentColor),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
           Text(
-            value,
+            label,
             style: const TextStyle(
-              color: AppColors.deepGreen,
-              fontSize: 17.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF5A726E),
             ),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
           Text(
-            unit,
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppColors.textSecondary,
+              fontFamily: 'monospace',
               fontSize: 10,
-              fontWeight: FontWeight.w500,
+              color: Color(0xFF8DA39F),
             ),
           ),
         ],
@@ -602,6 +858,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildSpendingCard({
+    required BuildContext context,
     required bool isWeekly,
     required double totalSpent,
     required double totalSaved,
@@ -612,271 +869,182 @@ class _HomeTabState extends State<HomeTab> {
     required double otherSpending,
     required AppState state,
   }) {
-    final periodLabel = isWeekly ? 'Weekly' : 'Monthly';
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.deepGreen,
-        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B3D3A), Color(0xFF0E4743)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AppColors.deepGreen.withAlpha(60),
-            blurRadius: 14,
+            color: const Color(0xFF0B3D3A).withValues(alpha: 0.3),
+            blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
       ),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(25),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: const Icon(
-                              Icons.account_balance_wallet_rounded,
-                              color: Colors.white,
-                              size: 15,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              isWeekly ? 'Spent this week' : 'Spent this month',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFFD2E8E1),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white,
+                        size: 15,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _showSpendingDetails = !_showSpendingDetails;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _showSpendingDetails ? 'Hide details' : 'View details',
-                              style: const TextStyle(
-                                color: Color(0xFF98DFB6),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              _showSpendingDetails
-                                  ? Icons.keyboard_arrow_up_rounded
-                                  : Icons.keyboard_arrow_down_rounded,
-                              color: const Color(0xFF98DFB6),
-                              size: 15,
-                            ),
-                          ],
+                    Expanded(
+                      child: Text(
+                        isWeekly ? 'SPENT THIS WEEK' : 'SPENT THIS MONTH',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: Color(0xFFD2E8E1),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
                         ),
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  CurrencyFormat.format(totalSpent),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1,
-                  ),
-                ),
-
-                const SizedBox(height: 5),
-
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: AppColors.mainGreen,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            state.discountType == DiscountType.senior
-                                ? Icons.elderly_rounded
-                                : (state.discountType == DiscountType.pwd
-                                    ? Icons.accessible_rounded
-                                    : Icons.school_rounded),
-                            color: Colors.white,
-                            size: 11,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            state.hasDiscount ? '${state.discountBadgeText} (-20%)' : 'Regular fare',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (state.hasDiscount && totalSaved > 0)
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  _showSpendingBreakdownModal(
+                    context: context,
+                    isWeekly: isWeekly,
+                    totalSpent: totalSpent,
+                    totalSaved: totalSaved,
+                    jeepneySpending: jeepneySpending,
+                    busSpending: busSpending,
+                    otherSpending: otherSpending,
+                    state: state,
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
                       Text(
-                        'Saved ${CurrencyFormat.format(totalSaved)}',
-                        style: const TextStyle(
+                        'View details',
+                        style: TextStyle(
                           color: Color(0xFF98DFB6),
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
-
-                const SizedBox(height: 14),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$periodLabel budget usage',
-                        style: const TextStyle(
-                          color: Color(0xFFD2E8E1),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF98DFB6),
+                        size: 15,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${CurrencyFormat.format(totalSpent)} / ${CurrencyFormat.format(budget)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: LinearProgressIndicator(
-                    value: budgetProgress,
-                    minHeight: 6,
-                    backgroundColor: Colors.white.withAlpha(40),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            CurrencyFormat.format(totalSpent),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Concession discount badge pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: state.hasDiscount ? const Color(0xFF1F8A4C) : Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  state.hasDiscount ? Icons.verified_rounded : Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size: 11,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  state.hasDiscount ? '20% student discount' : 'Regular fare',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
           ),
 
-          if (_showSpendingDetails) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF09312B),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
+          const SizedBox(height: 16),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Budget used',
+                style: const TextStyle(
+                  color: Color(0xFFD2E8E1),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'SPENDING BREAKDOWN',
-                    style: TextStyle(
-                      color: Color(0xFF98DFB6),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildBreakdownRow('Jeepney', CurrencyFormat.format(jeepneySpending), Icons.airport_shuttle_rounded),
-                  const SizedBox(height: 6),
-                  _buildBreakdownRow('Bus', CurrencyFormat.format(busSpending), Icons.directions_bus_rounded),
-                  const SizedBox(height: 6),
-                  _buildBreakdownRow('Other transport', CurrencyFormat.format(otherSpending), Icons.commute_rounded),
-                  const Divider(color: Colors.white24, height: 16),
-                  _buildBreakdownRow(
-                    'Total Student Savings',
-                    CurrencyFormat.format(totalSaved),
-                    Icons.savings_rounded,
-                    isHighlight: true,
-                  ),
-                ],
+              Text(
+                '${CurrencyFormat.format(totalSpent)} / ${CurrencyFormat.format(budget)}',
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: LinearProgressIndicator(
+              value: budgetProgress,
+              minHeight: 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
             ),
-          ],
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBreakdownRow(String label, String amount, IconData icon, {bool isHighlight = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 13, color: isHighlight ? const Color(0xFF34D399) : const Color(0xFFD2E8E1)),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                color: isHighlight ? const Color(0xFF34D399) : const Color(0xFFD2E8E1),
-                fontSize: 11.5,
-                fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        Text(
-          amount,
-          style: TextStyle(
-            color: isHighlight ? const Color(0xFF34D399) : Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 
@@ -889,11 +1057,18 @@ class _HomeTabState extends State<HomeTab> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,7 +1092,8 @@ class _HomeTabState extends State<HomeTab> {
               Text(
                 isWeekly ? 'Mon – Sun' : 'W1 – W4',
                 style: const TextStyle(
-                  color: AppColors.textSecondary,
+                  fontFamily: 'monospace',
+                  color: Color(0xFF5A726E),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -944,6 +1120,7 @@ class _HomeTabState extends State<HomeTab> {
                       Text(
                         hasSpend ? '₱${amount.toStringAsFixed(0)}' : '–',
                         style: TextStyle(
+                          fontFamily: 'monospace',
                           fontSize: 9,
                           fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w400,
                           color: hasSpend ? AppColors.mainGreen : AppColors.textMuted,
@@ -961,9 +1138,16 @@ class _HomeTabState extends State<HomeTab> {
                         alignment: Alignment.bottomCenter,
                         child: Container(
                           width: 16,
-                          height: math.max(5.0, 70 * fraction),
+                          height: math.max(6.0, 70 * fraction),
                           decoration: BoxDecoration(
-                            color: hasSpend ? AppColors.mainGreen : Colors.transparent,
+                            gradient: hasSpend
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF1F8A4C), Color(0xFF34D399)],
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                  )
+                                : null,
+                            color: hasSpend ? null : Colors.transparent,
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
@@ -973,9 +1157,10 @@ class _HomeTabState extends State<HomeTab> {
                       Text(
                         label,
                         style: TextStyle(
+                          fontFamily: 'monospace',
                           fontSize: 10.5,
                           fontWeight: hasSpend ? FontWeight.w700 : FontWeight.w500,
-                          color: hasSpend ? AppColors.deepGreen : AppColors.textSecondary,
+                          color: hasSpend ? AppColors.deepGreen : const Color(0xFF6B7280),
                         ),
                       ),
                     ],
@@ -990,144 +1175,245 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildCommuteInsights({
+    required BuildContext context,
     required bool isTablet,
-    required bool isWeekly,
+    required SavedRoute? mostFrequentRoute,
     required String mostFrequentRouteName,
     required int mostFrequentCount,
+    required int totalTrips,
     required double remainingBudget,
     required bool isOnTrack,
   }) {
     final frequentCard = Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'MOST FREQUENT ROUTE',
-                style: TextStyle(
-                  color: Color(0xFF5F8CFF),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Icon(Icons.directions_outlined, size: 14, color: Color(0xFF5F8CFF)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            mostFrequentRouteName,
-            style: const TextStyle(
-              color: AppColors.deepGreen,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '$mostFrequentCount ${mostFrequentCount == 1 ? 'trip logged' : 'trips logged'}',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
+      ),
+      child: InkWell(
+        onTap: () => _openRouteDetail(context, mostFrequentRoute),
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFB800),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.route_outlined,
+                color: Color(0xFF1E2825),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Most frequent route',
+                    style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    mostFrequentRouteName,
+                    style: const TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$mostFrequentCount of $totalTrips trips',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      color: Color(0xFF6B7280),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Color(0xFF374151),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
     final budgetRemainingCard = Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'BUDGET REMAINING',
-                style: TextStyle(
-                  color: AppColors.mainGreen,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isOnTrack ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isOnTrack ? 'On track' : 'Exceeded',
-                  style: TextStyle(
-                    color: isOnTrack ? AppColors.mainGreen : AppColors.coral,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          const SizedBox(height: 6),
-          Text(
-            CurrencyFormat.format(remainingBudget),
-            style: const TextStyle(
-              color: AppColors.deepGreen,
-              fontSize: 15.5,
-              fontWeight: FontWeight.w800,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF6584),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Color(0xFF1E2825),
+              size: 24,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            isOnTrack
-                ? 'Within ${isWeekly ? 'weekly' : 'monthly'} budget'
-                : 'Over budget limit',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Budget remaining',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  CurrencyFormat.format(remainingBudget),
+                  style: const TextStyle(
+                    color: AppColors.deepGreen,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isOnTrack ? "You're comfortably on track" : "Over budget limit",
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Color(0xFF6B7280),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+            decoration: BoxDecoration(
+              color: isOnTrack ? const Color(0xFFD1F2DE) : const Color(0xFFFFE4E6),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              isOnTrack ? 'ON TRACK' : 'OVER BUDGET',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                color: isOnTrack ? const Color(0xFF168051) : const Color(0xFFDC2626),
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ],
       ),
     );
 
-    if (isTablet) {
-      return Row(
-        children: [
-          Expanded(child: frequentCard),
-          const SizedBox(width: 10),
-          Expanded(child: budgetRemainingCard),
-        ],
-      );
-    } else {
-      return Column(
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'SMART SUMMARY',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            color: Color(0xFF8DA39F),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Flexible(
+              child: Text(
+                'Commute insights',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.deepGreen,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Updated today',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                color: Color(0xFF7A8B87),
+                fontSize: 11.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (isTablet)
+          Row(
+            children: [
+              Expanded(child: frequentCard),
+              const SizedBox(width: 12),
+              Expanded(child: budgetRemainingCard),
+            ],
+          )
+        else ...[
           frequentCard,
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           budgetRemainingCard,
         ],
-      );
-    }
+      ],
+    );
   }
 
   Widget _buildRecentTripsSection({
@@ -1140,29 +1426,65 @@ class _HomeTabState extends State<HomeTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Recent trips',
+          'TRIP LOG',
           style: TextStyle(
-            color: AppColors.deepGreen,
-            fontSize: 15.5,
+            fontFamily: 'monospace',
+            color: Color(0xFF8DA39F),
+            fontSize: 10.5,
             fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Flexible(
+              child: Text(
+                'Recent trips',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.deepGreen,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () => widget.onNavigateToTab?.call(3),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text(
+                  'View all ${state.trips.length} trips',
+                  style: const TextStyle(
+                    color: AppColors.deepGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
         if (recentTrips.isEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5ECE8)),
             ),
             child: const Center(
               child: Text(
                 'No trips logged yet.',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: Color(0xFF5A726E),
                   fontSize: 13,
                 ),
               ),
@@ -1175,105 +1497,119 @@ class _HomeTabState extends State<HomeTab> {
             final isBus = nameLower.contains('bus');
             final isTricycle = nameLower.contains('trike') || nameLower.contains('tricycle');
 
+            final badgeColor = isBus
+                ? const Color(0xFF4A80F0)
+                : (isTricycle ? const Color(0xFFFF6584) : const Color(0xFFFFB800));
+
+            final iconData = isBus
+                ? Icons.directions_bus_filled_rounded
+                : (isTricycle ? Icons.electric_rickshaw_rounded : Icons.directions_bus_filled_rounded);
+
+            final vehicleTag = isBus ? 'BUS' : (isTricycle ? 'TRIKE' : 'JEEP');
+            final dateTag = trip.date.toUpperCase();
+            final displayTitle = _cleanRouteName(trip.routeName);
+
             return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                onTap: () {
-                  if (savedRoute != null) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => RouteDetailScreen(route: savedRoute),
-                      ),
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border, width: 1),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: isBus
-                              ? AppColors.deepGreen
-                              : (isTricycle
-                                  ? const Color(0xFFFFC700).withAlpha(40)
-                                  : AppColors.lightMint),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          isBus
-                              ? Icons.directions_bus_filled_rounded
-                              : (isTricycle
-                                  ? Icons.electric_rickshaw_rounded
-                                  : Icons.airport_shuttle_rounded),
-                          color: isBus
-                              ? Colors.white
-                              : (isTricycle
-                                  ? const Color(0xFFB8690A)
-                                  : AppColors.mainGreen),
-                          size: 18,
-                        ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              trip.routeName,
-                              style: const TextStyle(
-                                color: AppColors.deepGreen,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              trip.date,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: Icon(
+                        iconData,
+                        color: const Color(0xFF1E2825),
+                        size: 24,
                       ),
-
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            CurrencyFormat.format(trip.amount),
+                            displayTitle,
                             style: const TextStyle(
-                              color: AppColors.deepGreen,
+                              color: Color(0xFF111827),
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
-                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '$vehicleTag  ·  $dateTag',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              color: Color(0xFF6B7280),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          if (savedRoute != null)
-                            const Text(
-                              'View route →',
-                              style: TextStyle(
-                                color: AppColors.mainGreen,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          CurrencyFormat.format(trip.amount),
+                          style: const TextStyle(
+                            color: Color(0xFF111827),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        InkWell(
+                          onTap: () => _openRouteDetail(context, savedRoute),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text(
+                                  'View route',
+                                  style: TextStyle(
+                                    color: Color(0xFF1F8A4C),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFF1F8A4C),
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             );

@@ -215,14 +215,18 @@ class _LogTripScreenState extends State<LogTripScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              isStudentDiscount ? 'Calculated Student Fare (20% off):' : 'Calculated Regular Fare:',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                            Expanded(
+                              child: Text(
+                                isStudentDiscount ? 'Calculated Student Fare (20% off):' : 'Calculated Regular Fare:',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               '₱${_selectedRoute!.getDiscountedTotal(isStudentDiscount).toStringAsFixed(2)}',
                               style: const TextStyle(

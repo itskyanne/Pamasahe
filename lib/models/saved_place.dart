@@ -15,6 +15,8 @@ class SavedPlace {
     this.category = 'Other',
   });
 
+  String get displayTitle => name == 'Mall' ? 'City Mall' : name;
+
   IconData get icon {
     switch (category.toLowerCase()) {
       case 'home':
@@ -22,11 +24,14 @@ class SavedPlace {
       case 'school':
         return Icons.school_rounded;
       case 'mall':
+      case 'shop':
         return Icons.storefront_rounded;
       case 'work':
         return Icons.business_center_rounded;
       case 'terminal':
         return Icons.directions_bus_rounded;
+      case 'library':
+        return Icons.local_library_rounded;
       case 'other':
       default:
         return Icons.place_rounded;
@@ -36,15 +41,18 @@ class SavedPlace {
   Color get color {
     switch (category.toLowerCase()) {
       case 'home':
-        return const Color(0xFF1F8A4C);
+        return const Color(0xFF10B981);
       case 'school':
-        return const Color(0xFF2563EB);
+        return const Color(0xFF3B82F6);
       case 'mall':
-        return const Color(0xFFEA580C);
+      case 'shop':
+        return const Color(0xFFEC4899);
       case 'work':
-        return const Color(0xFF7C3AED);
+        return const Color(0xFF8B5CF6);
       case 'terminal':
         return const Color(0xFF0D9488);
+      case 'library':
+        return const Color(0xFFF59E0B);
       default:
         return const Color(0xFF0B3D3A);
     }

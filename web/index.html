@@ -31,8 +31,25 @@
 
   <title>pamasahe</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      background-color: #F8FAF9 !important;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+    flutter-view, canvas, flt-glass-pane {
+      background-color: #F8FAF9 !important;
+      outline: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+  </style>
 </head>
-<body>
+<body style="background-color: #F8FAF9;">
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

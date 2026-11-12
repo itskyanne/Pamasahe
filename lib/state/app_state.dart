@@ -15,6 +15,14 @@ enum DiscountType {
 
 class AppState extends ChangeNotifier {
   DiscountType _discountType = DiscountType.student;
+  double _weeklyBudget = 150.00;
+  double _monthlyBudget = 600.00;
+
+  String _userName = 'Dwayne Paulino';
+  String _userSubtitle = 'Student commuter · Member since 2026';
+  bool _tripReminders = true;
+  bool _weeklySummary = false;
+
   List<SavedPlace> _savedPlaces = [];
   List<SavedRoute> _routes = [];
   List<Trip> _trips = [];
@@ -32,10 +40,58 @@ class AppState extends ChangeNotifier {
     _lines = InitialData.getLines();
   }
 
-  // Getters
+  // User Profile
+  String get userName => _userName;
+  String get userSubtitle => _userSubtitle;
+  String get userInitials {
+    final parts = _userName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'DP';
+    if (parts.length == 1) return parts.first.substring(0, parts.first.length >= 2 ? 2 : 1).toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  void setUserName(String name) {
+    if (name.trim().isNotEmpty) {
+      _userName = name.trim();
+      notifyListeners();
+    }
+  }
+
+  void setUserSubtitle(String subtitle) {
+    _userSubtitle = subtitle.trim();
+    notifyListeners();
+  }
+
+  // Reminders / Notifications
+  bool get tripReminders => _tripReminders;
+  void setTripReminders(bool value) {
+    _tripReminders = value;
+    notifyListeners();
+  }
+
+  bool get weeklySummary => _weeklySummary;
+  void setWeeklySummary(bool value) {
+    _weeklySummary = value;
+    notifyListeners();
+  }
+
+  // Concessions & Budgets
   DiscountType get discountType => _discountType;
   bool get hasDiscount => _discountType != DiscountType.none;
   bool get studentDiscount => hasDiscount;
+
+  double get weeklyBudget => _weeklyBudget;
+  double get monthlyBudget => _monthlyBudget;
+
+  void setWeeklyBudget(double budget) {
+    _weeklyBudget = budget;
+    notifyListeners();
+  }
+
+  void setMonthlyBudget(double budget) {
+    _monthlyBudget = budget;
+    notifyListeners();
+  }
 
   String get discountTypeName {
     switch (_discountType) {
@@ -92,6 +148,16 @@ class AppState extends ChangeNotifier {
       _savedPlaces.add(place);
     }
     notifyListeners();
+  }
+
+  void updateSavedPlaceItem(String originalName, SavedPlace updatedPlace) {
+    final index = _savedPlaces.indexWhere((p) => p.name.toLowerCase() == originalName.toLowerCase());
+    if (index != -1) {
+      _savedPlaces[index] = updatedPlace;
+      notifyListeners();
+    } else {
+      addSavedPlaceItem(updatedPlace);
+    }
   }
 
   void addSavedPlace(String place) {
@@ -177,6 +243,7 @@ class AppState extends ChangeNotifier {
     required String routeName,
     required double amount,
     required String date,
+    String? vehicleType,
   }) {
     final newTrip = Trip(
       id: _nextTripId++,
@@ -184,6 +251,7 @@ class AppState extends ChangeNotifier {
       routeName: routeName,
       date: date,
       amount: amount,
+      vehicleType: vehicleType,
     );
     // Sort history newest first
     _trips.insert(0, newTrip);

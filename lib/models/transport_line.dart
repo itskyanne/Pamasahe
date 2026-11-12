@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class TransportLine {
   final int id;
   final String name;
@@ -10,6 +12,11 @@ class TransportLine {
   final bool isLoop;
   final List<String> stops;
   final bool isSample;
+  final String? code;
+  final String? status;
+  final String? frequency;
+  final String? routeCoverage;
+  final Color? color;
 
   const TransportLine({
     required this.id,
@@ -23,6 +30,11 @@ class TransportLine {
     this.isLoop = false,
     this.stops = const [],
     this.isSample = true,
+    this.code,
+    this.status,
+    this.frequency,
+    this.routeCoverage,
+    this.color,
   });
 
   TransportLine copyWith({
@@ -37,6 +49,11 @@ class TransportLine {
     bool? isLoop,
     List<String>? stops,
     bool? isSample,
+    String? code,
+    String? status,
+    String? frequency,
+    String? routeCoverage,
+    Color? color,
   }) {
     return TransportLine(
       id: id ?? this.id,
@@ -50,6 +67,11 @@ class TransportLine {
       isLoop: isLoop ?? this.isLoop,
       stops: stops ?? this.stops,
       isSample: isSample ?? this.isSample,
+      code: code ?? this.code,
+      status: status ?? this.status,
+      frequency: frequency ?? this.frequency,
+      routeCoverage: routeCoverage ?? this.routeCoverage,
+      color: color ?? this.color,
     );
   }
 }

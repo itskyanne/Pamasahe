@@ -9,6 +9,8 @@ class SavedRoute {
   final List<RouteStep> steps;
   final String faresUpdated;
   final bool faresOutdated;
+  final int? monthlyTrips;
+  final String? lastUsed;
 
   const SavedRoute({
     required this.id,
@@ -19,6 +21,8 @@ class SavedRoute {
     required this.steps,
     required this.faresUpdated,
     this.faresOutdated = false,
+    this.monthlyTrips,
+    this.lastUsed,
   });
 
   double get regularTotal {
@@ -44,6 +48,8 @@ class SavedRoute {
     List<RouteStep>? steps,
     String? faresUpdated,
     bool? faresOutdated,
+    int? monthlyTrips,
+    String? lastUsed,
   }) {
     return SavedRoute(
       id: id ?? this.id,
@@ -54,6 +60,8 @@ class SavedRoute {
       steps: steps ?? this.steps,
       faresUpdated: faresUpdated ?? this.faresUpdated,
       faresOutdated: faresOutdated ?? this.faresOutdated,
+      monthlyTrips: monthlyTrips ?? this.monthlyTrips,
+      lastUsed: lastUsed ?? this.lastUsed,
     );
   }
 }

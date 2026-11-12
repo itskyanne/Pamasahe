@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -11,13 +12,17 @@ class PhoneFrame extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // If the screen is wider than typical mobile phones (e.g. tablet, desktop, web browser)
-        if (constraints.maxWidth > 500) {
+        if (constraints.maxWidth > 900) {
+          final frameHeight = constraints.maxHeight.isFinite
+              ? math.min(844.0, math.max(500.0, constraints.maxHeight - 32.0))
+              : 844.0;
+
           return Scaffold(
             backgroundColor: const Color(0xFFE2EBE8),
             body: Center(
               child: Container(
                 width: 390,
-                height: 844,
+                height: frameHeight,
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   borderRadius: BorderRadius.circular(32),
@@ -40,8 +45,11 @@ class PhoneFrame extends StatelessWidget {
           );
         }
 
-        // On mobile screen, fill viewport
-        return child;
+        // On mobile screen, fill viewport with guaranteed solid background
+        return ColoredBox(
+          color: AppColors.background,
+          child: child,
+        );
       },
     );
   }
