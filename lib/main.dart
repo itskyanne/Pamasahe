@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/main_scaffold.dart';
+import 'screens/splash_screen.dart';
 import 'state/app_scope.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -11,7 +12,14 @@ void main() {
 }
 
 class PamasaheApp extends StatefulWidget {
-  const PamasaheApp({super.key});
+  final bool showSplashScreen;
+  final Duration splashDuration;
+
+  const PamasaheApp({
+    super.key,
+    this.showSplashScreen = true,
+    this.splashDuration = const Duration(milliseconds: 1400),
+  });
 
   @override
   State<PamasaheApp> createState() => _PamasaheAppState();
@@ -45,7 +53,9 @@ class _PamasaheAppState extends State<PamasaheApp> {
           // Centered responsive shell matching 390x844 mobile screen on larger displays
           return PhoneFrame(child: child ?? const SizedBox.shrink());
         },
-        home: const MainScaffold(),
+        home: widget.showSplashScreen
+            ? SplashScreen(duration: widget.splashDuration)
+            : const MainScaffold(),
       ),
     );
   }

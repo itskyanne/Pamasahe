@@ -353,4 +353,28 @@ void main() {
     expect(find.textContaining('Updated'), findsOneWidget);
     expect(find.text('My Sweet Home'), findsOneWidget);
   });
+
+  testWidgets('Loading splash screen displays Pamasahe wordmark and transitions to MainScaffold', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Pump widget with splash screen
+    await tester.pumpWidget(const PamasaheApp(
+      showSplashScreen: true,
+      splashDuration: Duration(milliseconds: 600),
+    ));
+
+    // Verify wordmark is visible immediately on load
+    expect(find.text('Pamasahe'), findsOneWidget);
+    expect(find.text('COMMUTE FARE TRACKER'), findsOneWidget);
+
+    // Let the animation complete and settle into MainScaffold
+    await tester.pumpAndSettle();
+
+    // Verify MainScaffold is reached and Home tab is displayed
+    expect(find.byKey(const ValueKey('nav_item_home')), findsOneWidget);
+    expect(find.text('SPENT THIS WEEK'), findsOneWidget);
+  });
 }
