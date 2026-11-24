@@ -11,10 +11,12 @@ import '../../widgets/theme_toggle_button.dart';
 
 class SettingsTab extends StatefulWidget {
   final ValueChanged<int>? onNavigateToTab;
+  final VoidCallback? onBack;
 
   const SettingsTab({
     super.key,
     this.onNavigateToTab,
+    this.onBack,
   });
 
   @override
@@ -23,6 +25,16 @@ class SettingsTab extends StatefulWidget {
 
 class _SettingsTabState extends State<SettingsTab> {
   int _selectedPlaceIndex = 0;
+
+  void _handleBack(BuildContext context) {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else if (widget.onNavigateToTab != null) {
+      widget.onNavigateToTab!(0);
+    }
+  }
 
   void _openMapPlacePicker(BuildContext context, {SavedPlace? initialPlace, bool isViewOnly = false}) {
     Navigator.of(context).push(
@@ -276,9 +288,12 @@ class _SettingsTabState extends State<SettingsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
-                      const PamasaheTopBar(
+                      // 1. TOP HEADER (Back navigation button, hides redundant profile avatar)
+                      PamasaheTopBar(
+                        showBackButton: true,
+                        showProfileAvatar: false,
                         isSettingsActive: true,
+                        onBackPressed: () => _handleBack(context),
                       ),
 
                       const SizedBox(height: 16),

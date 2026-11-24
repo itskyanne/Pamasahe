@@ -16,6 +16,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+  int _previousIndex = 0;
   late final List<Widget> _tabs;
 
   @override
@@ -26,34 +27,55 @@ class _MainScaffoldState extends State<MainScaffold> {
       RoutesTab(onNavigateToSettings: () => _onNavigateToTab(4)),
       LinesTab(onNavigateToSettings: () => _onNavigateToTab(4)),
       HistoryTab(onNavigateToSettings: () => _onNavigateToTab(4)),
-      SettingsTab(onNavigateToTab: _onNavigateToTab),
+      SettingsTab(
+        onNavigateToTab: _onNavigateToTab,
+        onBack: _onBackFromSettings,
+      ),
     ];
   }
 
   void _onNavigateToTab(int index) {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_currentIndex != index) {
+      if (index == 4 && _currentIndex != 4) {
+        _previousIndex = _currentIndex;
+      }
       setState(() => _currentIndex = index);
     }
+  }
+
+  void _onBackFromSettings() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _currentIndex = (_previousIndex >= 0 && _previousIndex < 4) ? _previousIndex : 0;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      extendBody: true,
-      body: ColoredBox(
-        color: bgColor,
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _tabs,
+    return PopScope(
+      canPop: _currentIndex != 4,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _currentIndex == 4) {
+          _onBackFromSettings();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        extendBody: true,
+        body: ColoredBox(
+          color: bgColor,
+          child: IndexedStack(
+            index: _currentIndex,
+            children: _tabs,
+          ),
         ),
-      ),
-      bottomNavigationBar: _FloatingBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavigateToTab,
+        bottomNavigationBar: _FloatingBottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: _onNavigateToTab,
+        ),
       ),
     );
   }

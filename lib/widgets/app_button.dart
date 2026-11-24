@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 /// Available visual variants for [AppButton], matching modern minimalist pill design.
 enum AppButtonVariant {
