@@ -16,15 +16,16 @@ class PamasaheTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     final initials = state.userInitials;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'Pamasahe',
           style: TextStyle(
-            color: AppColors.deepGreen,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.deepGreen,
             fontSize: 20,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -45,17 +46,17 @@ class PamasaheTopBar extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF133E37),
+                  color: isDark ? const Color(0xFF16191F) : const Color(0xFF133E37),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSettingsActive
-                        ? AppColors.mainGreen
-                        : Colors.white.withValues(alpha: 0.22),
+                        ? (isDark ? AppColors.darkMainGreen : AppColors.mainGreen)
+                        : (isDark ? AppColors.darkBorderSubtle : Colors.white.withValues(alpha: 0.22)),
                     width: isSettingsActive ? 2.0 : 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
+                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -64,8 +65,8 @@ class PamasaheTopBar extends StatelessWidget {
                 child: Center(
                   child: Text(
                     initials,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextPrimary : Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,

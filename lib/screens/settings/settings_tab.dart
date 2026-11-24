@@ -7,6 +7,7 @@ import '../../widgets/notification_banner.dart';
 import '../../widgets/pamasahe_top_bar.dart';
 import '../auth/auth_screen.dart';
 import 'map_place_picker_screen.dart';
+import '../../widgets/theme_toggle_button.dart';
 
 class SettingsTab extends StatefulWidget {
   final ValueChanged<int>? onNavigateToTab;
@@ -37,11 +38,12 @@ class _SettingsTabState extends State<SettingsTab> {
   void _showEditProfileDialog(BuildContext context, AppState state) {
     final nameController = TextEditingController(text: state.userName);
     final subtitleController = TextEditingController(text: state.userSubtitle);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppColors.darkSurfaceModal : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -249,9 +251,10 @@ class _SettingsTabState extends State<SettingsTab> {
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
     final places = state.savedPlaceObjects;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -281,35 +284,59 @@ class _SettingsTabState extends State<SettingsTab> {
                       const SizedBox(height: 16),
 
                       // 2. PAGE HEADER
-                      const Text(
-                        'YOUR ACCOUNT',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          color: Color(0xFF165B47),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'YOUR ACCOUNT',
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    color: isDark ? AppColors.darkMainGreen : const Color(0xFF165B47),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Settings',
+                                  style: TextStyle(
+                                    color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.9,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ThemeToggleButton(
+                            key: const ValueKey('settings_theme_toggle_header'),
+                            themeMode: state.themeMode,
+                            onToggle: () {
+                              state.toggleThemeMode();
+                              NotificationBanner.showInfo(
+                                context,
+                                state.isDarkMode
+                                    ? 'Switched to Dark Mode (Off-Black & Layered Grays)'
+                                    : 'Switched to Light Mode (Soft White & Charcoal)',
+                              );
+                            },
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 4),
 
-                      const Text(
-                        'Settings',
-                        style: TextStyle(
-                          color: Color(0xFF111827),
-                          fontSize: 34,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.9,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      const Text(
+                      Text(
                         'Personalize your budget, discounts, places, and reminders.',
                         style: TextStyle(
-                          color: Color(0xFF4B5563),
+                          color: isDark ? AppColors.darkTextSecondary : const Color(0xFF4B5563),
                           fontSize: 14,
                           height: 1.4,
                         ),
@@ -331,6 +358,13 @@ class _SettingsTabState extends State<SettingsTab> {
                       _buildSupabaseCloudCard(context, state),
 
                       const SizedBox(height: 20),
+
+                      // 4.2 APPEARANCE CARD (Dark & Light Mode)
+                      _buildAppearanceCard(context, state),
+
+                      const SizedBox(height: 20),
+
+
 
                       // 5. COMMUTE PREFERENCES & REMINDERS CARDS
                       if (isTablet)
@@ -376,6 +410,118 @@ class _SettingsTabState extends State<SettingsTab> {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  // --- APPEARANCE CARD (DARK & LIGHT MODE) ---
+  Widget _buildAppearanceCard(BuildContext context, AppState state) {
+    final isDark = state.isDarkMode;
+    final surfaceColor = isDark ? AppColors.darkSurfaceCard : Colors.white;
+    final borderColor = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+    final titleColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final subtitleColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF4B5563);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkMainGreen.withValues(alpha: 0.16)
+                              : AppColors.mainGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                          color: isDark ? AppColors.darkMainGreen : AppColors.mainGreen,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'APPEARANCE',
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                color: isDark ? AppColors.darkMainGreen : const Color(0xFF165B47),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isDark ? 'Dark Mode' : 'Light Mode',
+                              style: TextStyle(
+                                color: titleColor,
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ThemeToggleButton(
+                  key: const ValueKey('settings_appearance_card_toggle'),
+                  themeMode: state.themeMode,
+                  onToggle: () {
+                    state.toggleThemeMode();
+                    NotificationBanner.showInfo(
+                      context,
+                      state.isDarkMode
+                          ? 'Switched to Dark Mode (Off-Black & Layered Grays)'
+                          : 'Switched to Light Mode (Soft White & Charcoal)',
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isDark
+                  ? 'Off-Black & Soft White layered palette with muted cool grays (#0B0D10 / #16191F / #21252D) to reduce eye fatigue and prevent OLED smearing.'
+                  : 'Soft White canvas with crisp elevated white cards and deep charcoal typography (#111827).',
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -500,13 +646,14 @@ class _SettingsTabState extends State<SettingsTab> {
   Widget _buildSupabaseCloudCard(BuildContext context, AppState state) {
     final isAuthed = state.isCloudAuthenticated;
     final isSyncing = state.isCloudSyncing;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -693,11 +840,12 @@ class _SettingsTabState extends State<SettingsTab> {
     List<SavedPlace> places,
     bool isTablet,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+        border: Border.all(color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB), width: 1.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -873,12 +1021,13 @@ class _SettingsTabState extends State<SettingsTab> {
 
   // --- COMMUTE PREFERENCES (FARES & BUDGET) ---
   Widget _buildCommutePreferencesCard(BuildContext context, AppState state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+        border: Border.all(color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB), width: 1.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1043,12 +1192,13 @@ class _SettingsTabState extends State<SettingsTab> {
 
   // --- REMINDERS (NOTIFICATIONS) ---
   Widget _buildRemindersCard(BuildContext context, AppState state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+        border: Border.all(color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB), width: 1.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),

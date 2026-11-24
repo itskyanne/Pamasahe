@@ -39,11 +39,13 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bgColor,
       extendBody: true,
       body: ColoredBox(
-        color: AppColors.background,
+        color: bgColor,
         child: IndexedStack(
           index: _currentIndex,
           children: _tabs,
@@ -97,6 +99,8 @@ class _FloatingBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Align(
       alignment: Alignment.bottomCenter,
       child: SafeArea(
@@ -110,23 +114,20 @@ class _FloatingBottomNavBar extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
-                  // Primary downward drop shadow casting below the nav bar
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.14),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                     spreadRadius: 1,
                   ),
-                  // Ambient brand deep-green shadow for rich depth
                   BoxShadow(
-                    color: AppColors.deepGreen.withValues(alpha: 0.12),
+                    color: (isDark ? AppColors.darkMainGreen : AppColors.deepGreen).withValues(alpha: isDark ? 0.08 : 0.12),
                     blurRadius: 18,
                     offset: const Offset(0, 6),
                     spreadRadius: 0,
                   ),
-                  // Crisp contact shadow directly below the bar edge
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                     spreadRadius: 0,
@@ -140,10 +141,14 @@ class _FloatingBottomNavBar extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: isDark
+                          ? AppColors.darkSurfaceCard.withValues(alpha: 0.92)
+                          : Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: Colors.black.withValues(alpha: 0.08),
+                        color: isDark
+                            ? AppColors.darkBorderSubtle
+                            : Colors.black.withValues(alpha: 0.08),
                         width: 1.0,
                       ),
                     ),
@@ -190,8 +195,10 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = AppColors.deepGreen; // Color(0xFF0B3D3A)
-    const inactiveColor = Color(0xFF223631);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? AppColors.darkMainGreen : AppColors.deepGreen;
+    final activeTextColor = isDark ? const Color(0xFF0B0D10) : Colors.white;
+    final inactiveColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF4B5563);
 
     return Material(
       color: Colors.transparent,
@@ -215,7 +222,7 @@ class _NavBarItem extends StatelessWidget {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: activeColor.withValues(alpha: 0.35),
+                      color: activeColor.withValues(alpha: isDark ? 0.25 : 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -229,7 +236,7 @@ class _NavBarItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 21,
-                color: isSelected ? Colors.white : inactiveColor,
+                color: isSelected ? activeTextColor : inactiveColor,
               ),
               const SizedBox(height: 3),
               Text(
@@ -239,7 +246,7 @@ class _NavBarItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: isSelected ? Colors.white : inactiveColor,
+                  color: isSelected ? activeTextColor : inactiveColor,
                   letterSpacing: -0.2,
                 ),
               ),

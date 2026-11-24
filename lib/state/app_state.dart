@@ -24,6 +24,24 @@ class AppState extends ChangeNotifier {
   bool _tripReminders = true;
   bool _weeklySummary = false;
 
+  // Theme Mode (Light / Dark)
+  ThemeMode _themeMode = ThemeMode.light;
+
+  ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
+
+  void setThemeMode(ThemeMode mode) {
+    if (_themeMode != mode) {
+      _themeMode = mode;
+      notifyListeners();
+    }
+  }
+
+  void toggleThemeMode() {
+    _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    notifyListeners();
+  }
+
   // Supabase Cloud State
   String? _cloudUserEmail = 'dwayne.paulino@gmail.com';
   String? _cloudUserId = 'usr_dwayne_2026';
