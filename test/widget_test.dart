@@ -49,14 +49,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('History'), findsNWidgets(2));
     expect(find.text('TRIP LOG'), findsOneWidget);
-    expect(find.text('Export CSV'), findsOneWidget);
 
     // Navigate to Settings tab
     await tester.tap(find.byKey(const ValueKey('nav_item_settings')));
     await tester.pumpAndSettle();
-    expect(find.text('Settings'), findsNWidgets(2));
+    expect(find.text('Settings'), findsOneWidget);
     expect(find.text('YOUR ACCOUNT'), findsOneWidget);
-    expect(find.text('Dwayne Paulino'), findsOneWidget);
+    expect(find.text('Wacky Paulino'), findsOneWidget);
 
     // Navigate back to Home tab
     await tester.tap(find.byKey(const ValueKey('nav_item_home')));
@@ -143,26 +142,29 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify header and initial state
-    expect(find.text('PUBLIC TRANSPORT'), findsOneWidget);
+    expect(find.text('DAVAO JEEPNEY NETWORK'), findsOneWidget);
     expect(find.text('Available lines'), findsOneWidget);
-    expect(find.text('Mabini–Poblacion'), findsOneWidget);
+    expect(find.text('Toril – Roxas / Bankerohan'), findsOneWidget);
     expect(find.text('J01'), findsOneWidget);
-    expect(find.text('B12'), findsOneWidget);
 
-    // Filter by 'Bus'
-    await tester.tap(find.text('Bus'));
+    // Filter by 'Loops'
+    await tester.ensureVisible(find.text('Loops'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Loops'));
     await tester.pumpAndSettle();
 
-    expect(find.text('University Loop'), findsOneWidget);
-    expect(find.text('Mabini–Poblacion'), findsNothing);
+    expect(find.text('Route 1 — Ecoland / San Pedro / Bankerohan Loop'), findsOneWidget);
+    expect(find.text('Toril – Roxas / Bankerohan'), findsNothing);
 
     // Filter by 'All'
+    await tester.ensureVisible(find.text('All'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('All'));
     await tester.pumpAndSettle();
-    expect(find.text('Mabini–Poblacion'), findsOneWidget);
+    expect(find.text('Toril – Roxas / Bankerohan'), findsOneWidget);
 
     // Tap to open line details whole screen
-    await tester.tap(find.text('Mabini–Poblacion'));
+    await tester.tap(find.text('Toril – Roxas / Bankerohan'));
     await tester.pumpAndSettle();
 
     expect(find.text('Line Details'), findsOneWidget);
@@ -171,17 +173,17 @@ void main() {
 
     // Verify stops like the old lines interface are shown
     expect(find.text('Key Stops & Waypoints'), findsOneWidget);
-    expect(find.text('Public Market'), findsOneWidget);
+    expect(find.text('Toril Terminal'), findsOneWidget);
 
     // Ensure stops are scrolled into view, then tap Point A and Point B
-    await tester.ensureVisible(find.text('Mabini Road').first);
+    await tester.ensureVisible(find.text('Toril Terminal').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mabini Road').first);
+    await tester.tap(find.text('Toril Terminal').first);
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Public Market').first);
+    await tester.ensureVisible(find.text('Bankerohan').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Public Market').first);
+    await tester.tap(find.text('Bankerohan').first);
     await tester.pumpAndSettle();
 
     // Verify segment fare estimation is displayed
@@ -189,7 +191,7 @@ void main() {
     expect(find.text('Use in a route'), findsOneWidget);
   });
 
-  testWidgets('History tab summary metrics, date filtering, and CSV export test', (WidgetTester tester) async {
+  testWidgets('History tab summary metrics and date filtering test', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -230,13 +232,6 @@ void main() {
     await tester.tap(find.text('This month'));
     await tester.pumpAndSettle();
     expect(find.text('18'), findsOneWidget);
-
-    // Tap "Export CSV" button
-    await tester.tap(find.text('Export CSV'));
-    await tester.pumpAndSettle();
-
-    // Verify CSV copied banner
-    expect(find.textContaining('copied to clipboard'), findsOneWidget);
   });
 
   testWidgets('Settings tab profile, interactive map canvas, saved places, and preferences test', (WidgetTester tester) async {
@@ -254,8 +249,8 @@ void main() {
 
     // Header & Profile card
     expect(find.text('YOUR ACCOUNT'), findsOneWidget);
-    expect(find.text('Settings'), findsNWidgets(2));
-    expect(find.text('Dwayne Paulino'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Wacky Paulino'), findsOneWidget);
     expect(find.text('Edit profile'), findsOneWidget);
 
     // Saved places card
@@ -310,7 +305,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify returned to Settings and place was saved banner shown
-    expect(find.text('Settings'), findsNWidgets(2));
+    expect(find.text('Settings'), findsOneWidget);
     expect(find.textContaining('Added'), findsOneWidget);
   });
 
@@ -349,7 +344,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify returned to Settings and place was updated
-    expect(find.text('Settings'), findsNWidgets(2));
+    expect(find.text('Settings'), findsOneWidget);
     expect(find.textContaining('Updated'), findsOneWidget);
     expect(find.text('My Sweet Home'), findsOneWidget);
   });

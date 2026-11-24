@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/trip.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
-import '../../widgets/notification_banner.dart';
+import '../../widgets/pamasahe_top_bar.dart';
 import '../routes/route_detail_screen.dart';
 import 'log_trip_screen.dart';
 
 class HistoryTab extends StatefulWidget {
-  const HistoryTab({super.key});
+  final VoidCallback? onNavigateToSettings;
+
+  const HistoryTab({
+    super.key,
+    this.onNavigateToSettings,
+  });
 
   @override
   State<HistoryTab> createState() => _HistoryTabState();
@@ -158,19 +162,6 @@ class _HistoryTabState extends State<HistoryTab> {
       default:
         return 'All time';
     }
-  }
-
-  void _exportCsv(BuildContext context, List<Trip> trips, AppState state) {
-    final buffer = StringBuffer();
-    buffer.writeln('Date,Route,Vehicle,Fare,Concession');
-    for (final trip in trips) {
-      final fare = state.hasDiscount ? trip.amount : (trip.amount / 0.8);
-      final concession = state.hasDiscount ? state.discountTypeName : 'Regular';
-      buffer.writeln('${trip.date},"${trip.routeName}",${trip.vehicle},${fare.toStringAsFixed(2)},$concession');
-    }
-
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
-    NotificationBanner.showSuccess(context, 'Exported ${trips.length} trips to CSV (copied to clipboard)');
   }
 
   void _showTripDetailSheet(BuildContext context, Trip trip, AppState state) {
@@ -353,32 +344,6 @@ class _HistoryTabState extends State<HistoryTab> {
             final isTablet = constraints.maxWidth >= 600;
             final horizontalPadding = isTablet ? 24.0 : 16.0;
 
-            Widget exportCsvButton({bool fullWidth = false}) {
-              final btn = OutlinedButton(
-                onPressed: () => _exportCsv(context, visibleTrips, state),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF111827),
-                  side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Export CSV',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              );
-
-              return fullWidth ? SizedBox(width: double.infinity, height: 44, child: btn) : btn;
-            }
-
             return Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
@@ -393,15 +358,9 @@ class _HistoryTabState extends State<HistoryTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
-                      const Text(
-                        'Pamasahe',
-                        style: TextStyle(
-                          color: AppColors.deepGreen,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
+                      // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
+                      PamasaheTopBar(
+                        onSettingsTap: widget.onNavigateToSettings,
                       ),
 
                       const SizedBox(height: 16),
@@ -420,62 +379,24 @@ class _HistoryTabState extends State<HistoryTab> {
 
                       const SizedBox(height: 4),
 
-                      if (isTablet)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    'History',
-                                    style: TextStyle(
-                                      color: Color(0xFF111827),
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.9,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Review your past commutes, fares, and student savings.',
-                                    style: TextStyle(
-                                      color: Color(0xFF4B5563),
-                                      fontSize: 14,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            exportCsvButton(fullWidth: false),
-                          ],
-                        )
-                      else ...[
-                        const Text(
-                          'History',
-                          style: TextStyle(
-                            color: Color(0xFF111827),
-                            fontSize: 34,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.9,
-                          ),
+                      const Text(
+                        'History',
+                        style: TextStyle(
+                          color: Color(0xFF111827),
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.9,
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Review your past commutes, fares, and student savings.',
-                          style: TextStyle(
-                            color: Color(0xFF4B5563),
-                            fontSize: 14,
-                            height: 1.4,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Review your past commutes, fares, and student savings.',
+                        style: TextStyle(
+                          color: Color(0xFF4B5563),
+                          fontSize: 14,
+                          height: 1.4,
                         ),
-                        const SizedBox(height: 14),
-                        exportCsvButton(fullWidth: true),
-                      ],
+                      ),
 
                       const SizedBox(height: 20),
 

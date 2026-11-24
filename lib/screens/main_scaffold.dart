@@ -23,10 +23,10 @@ class _MainScaffoldState extends State<MainScaffold> {
     super.initState();
     _tabs = [
       HomeTab(onNavigateToTab: _onNavigateToTab),
-      const RoutesTab(),
-      const LinesTab(),
-      const HistoryTab(),
-      const SettingsTab(),
+      RoutesTab(onNavigateToSettings: () => _onNavigateToTab(4)),
+      LinesTab(onNavigateToSettings: () => _onNavigateToTab(4)),
+      HistoryTab(onNavigateToSettings: () => _onNavigateToTab(4)),
+      SettingsTab(onNavigateToTab: _onNavigateToTab),
     ];
   }
 
@@ -83,10 +83,6 @@ const List<_NavDestinationItem> _destinations = [
   _NavDestinationItem(
     icon: Icons.access_time_outlined,
     label: 'History',
-  ),
-  _NavDestinationItem(
-    icon: Icons.settings_outlined,
-    label: 'Settings',
   ),
 ];
 

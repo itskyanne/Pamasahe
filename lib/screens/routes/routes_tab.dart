@@ -3,12 +3,18 @@ import '../../models/saved_route.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
+import '../../widgets/pamasahe_top_bar.dart';
 import '../history/log_trip_screen.dart';
 import 'add_edit_route_screen.dart';
 import 'route_detail_screen.dart';
 
 class RoutesTab extends StatefulWidget {
-  const RoutesTab({super.key});
+  final VoidCallback? onNavigateToSettings;
+
+  const RoutesTab({
+    super.key,
+    this.onNavigateToSettings,
+  });
 
   @override
   State<RoutesTab> createState() => _RoutesTabState();
@@ -147,15 +153,9 @@ class _RoutesTabState extends State<RoutesTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
-                  const Text(
-                    'Pamasahe',
-                    style: TextStyle(
-                      color: AppColors.deepGreen,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
+                  PamasaheTopBar(
+                    onSettingsTap: widget.onNavigateToSettings,
                   ),
 
                   const SizedBox(height: 16),
@@ -237,56 +237,65 @@ class _RoutesTabState extends State<RoutesTab> {
 
                   // 3. ROUTE SEARCH
                   Container(
-                    height: 50,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      color: const Color(0xFFEAF1ED),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFDCE5E1), width: 1),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Icon(
                           Icons.search_rounded,
                           color: Color(0xFF6B7280),
                           size: 20,
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
                             controller: _searchController,
                             focusNode: _searchFocusNode,
                             style: const TextStyle(
                               color: Color(0xFF111827),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w400,
                             ),
                             decoration: const InputDecoration(
                               hintText: 'Search saved routes',
                               hintStyle: TextStyle(
-                                color: Color(0xFF9CA3AF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7E8A86),
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
                               ),
+                              filled: false,
+                              fillColor: Colors.transparent,
                               border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              focusedErrorBorder: InputBorder.none,
                               isDense: true,
-                              contentPadding: EdgeInsets.zero,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
                             ),
                           ),
                         ),
                         if (_searchQuery.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF6B7280)),
-                            onPressed: () {
+                          GestureDetector(
+                            onTap: () {
                               _searchController.clear();
                             },
+                            behavior: HitTestBehavior.opaque,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                              child: Icon(
+                                Icons.cancel_rounded,
+                                size: 18,
+                                color: Color(0xFF7E8A86),
+                              ),
+                            ),
                           ),
                       ],
                     ),

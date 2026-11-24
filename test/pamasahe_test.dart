@@ -3,6 +3,7 @@ import 'package:pamasahe/models/ride_type.dart';
 import 'package:pamasahe/models/route_step.dart';
 import 'package:pamasahe/models/saved_place.dart';
 import 'package:pamasahe/models/saved_route.dart';
+import 'package:pamasahe/services/supabase_service.dart';
 import 'package:pamasahe/state/app_state.dart';
 
 void main() {
@@ -27,7 +28,7 @@ void main() {
         to: 'School',
         steps: [
           RouteStep(id: 1, rideType: RideType.jeepney, boardingPoint: 'Terminal', fare: 20.00),
-          RouteStep(id: 2, rideType: RideType.bus, boardingPoint: 'Highway', fare: 30.00),
+          RouteStep(id: 2, rideType: RideType.jeepney, boardingPoint: 'Highway', fare: 30.00),
         ],
         faresUpdated: 'Nov 6, 2026',
       );
@@ -140,19 +141,115 @@ void main() {
       expect(state.discountBadgeText, 'Regular fare');
     });
 
-    test('Transport line catalog has reference lines and Jeep A-12 is removed', () {
+    test('Transport line catalog contains only authentic Davao City jeepneys', () {
       final state = AppState();
 
       expect(state.lines.length, greaterThanOrEqualTo(25));
-      // Verify Jeep A-12 was removed
-      expect(state.lines.any((l) => l.name == 'Jeep A-12'), isFalse);
+      // Verify non-Davao and non-jeep lines are removed
+      expect(state.lines.any((l) => l.name == 'Bus 5 Express'), isFalse);
+      expect(state.lines.any((l) => l.name == 'Mabini–Poblacion'), isFalse);
+      expect(state.lines.every((l) => l.rideType == RideType.jeepney || l.rideType == RideType.eJeep), isTrue);
 
-      final bus5 = state.lines.firstWhere((l) => l.name == 'Bus 5 Express');
-      expect(bus5.rideType, RideType.bus);
-      expect(bus5.isSample, isTrue);
+      final torilLine = state.lines.firstWhere((l) => l.name.contains('Toril'));
+      expect(torilLine.rideType, RideType.jeepney);
 
       final route1Loop = state.lines.firstWhere((l) => l.name.contains('Route 1'));
       expect(route1Loop.isLoop, isTrue);
+    });
+  });
+
+  group('Supabase Cloud & Offline-First Integration Tests', () {
+    test('SupabaseService operates in offline-resilient mock mode without live keys', () {
+      final service = SupabaseService();
+      expect(service.isMockMode, isTrue);
+    });
+
+    test('Supabase authentication returns valid mock session for email and Google', () async {
+      final service = SupabaseService();
+
+      // Email sign in
+      final emailResult = await service.signInWithEmail(
+        email: 'dwayne.paulino@addu.edu.ph',
+        password: 'password123',
+      );
+      expect(emailResult.success, isTrue);
+      expect(emailResult.email, 'dwayne.paulino@addu.edu.ph');
+      expect(emailResult.id, isNotEmpty);
+
+      // Google OAuth sign in
+      final googleResult = await service.signInWithGoogle();
+      expect(googleResult.success, isTrue);
+      expect(googleResult.email, contains('@'));
+      expect(googleResult.id, isNotEmpty);
+    });
+
+    test('AppState updates cloud authentication state and signs out properly', () {
+      final state = AppState();
+      expect(state.isCloudAuthenticated, isTrue);
+
+      state.signOutCloud();
+      expect(state.isCloudAuthenticated, isFalse);
+      expect(state.cloudUserEmail, isNull);
+      expect(state.cloudUserId, isNull);
+
+      state.setCloudUser('student@addu.edu.ph', 'uuid-1234');
+      expect(state.isCloudAuthenticated, isTrue);
+      expect(state.cloudUserEmail, 'student@addu.edu.ph');
+      expect(state.cloudUserId, 'uuid-1234');
+    });
+
+    test('Supabase cloud backup and restore synchronizes routes with AppState', () async {
+      final state = AppState();
+      state.setCloudUser('student@addu.edu.ph', 'uuid-1234');
+
+      // Backup to cloud
+      final backupRes = await state.backupToSupabase();
+      expect(backupRes.success, isTrue);
+      expect(backupRes.message, contains('Backed up'));
+      expect(state.lastCloudSync, isNotNull);
+
+      // Restore from cloud
+      final restoreRes = await state.restoreFromSupabase();
+      expect(restoreRes.success, isTrue);
+      expect(restoreRes.message, contains('Cloud Restore Complete'));
+    });
+
+    test('Community shared routes can be fetched and published', () async {
+      final service = SupabaseService();
+
+      // Fetch community routes
+      final communityRoutes = await service.getCommunityRoutes();
+      expect(communityRoutes, isNotEmpty);
+      expect(communityRoutes.any((r) => r['name'].toString().contains('Matina')), isTrue);
+
+      // Publish a route to community
+      const testRoute = SavedRoute(
+        id: 99,
+        name: 'Toril to Roxas Night Market',
+        from: 'Toril Terminal',
+        to: 'Roxas Ave',
+        steps: [
+          RouteStep(id: 1, rideType: RideType.jeepney, boardingPoint: 'Toril', fare: 25.0),
+        ],
+        faresUpdated: 'Nov 20, 2026',
+      );
+
+      final published = await service.publishRouteToCommunity(
+        route: testRoute,
+        authorName: 'Dwayne (Student)',
+      );
+      expect(published, isTrue);
+    });
+
+    test('Over-The-Air (OTA) fare updates synchronize lines into AppState catalog', () async {
+      final state = AppState();
+      final initialCount = state.lines.length;
+
+      final result = await state.checkAndApplyOtaUpdates();
+      expect(result.hasUpdates, isTrue);
+      expect(result.count, 2);
+      expect(result.version, contains('LTFRB'));
+      expect(state.lines.length, greaterThanOrEqualTo(initialCount));
     });
   });
 }

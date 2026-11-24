@@ -2,22 +2,16 @@ import 'package:flutter/material.dart';
 
 class RideType {
   static const String jeepney = 'Jeepney';
+  static const String eJeep = 'Modern Jeepney';
   static const String bus = 'Bus';
   static const String p2pBus = 'P2P bus';
   static const String uvExpress = 'UV Express';
   static const String train = 'MRT/LRT/PNR train';
   static const String ferry = 'Ferry';
   static const String tricycle = 'Tricycle';
-  static const String eJeep = 'E-jeep';
 
   static const List<String> all = [
     jeepney,
-    bus,
-    p2pBus,
-    uvExpress,
-    train,
-    ferry,
-    tricycle,
     eJeep,
   ];
 

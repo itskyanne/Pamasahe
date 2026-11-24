@@ -4,10 +4,17 @@ import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/notification_banner.dart';
+import '../../widgets/pamasahe_top_bar.dart';
+import '../auth/auth_screen.dart';
 import 'map_place_picker_screen.dart';
 
 class SettingsTab extends StatefulWidget {
-  const SettingsTab({super.key});
+  final ValueChanged<int>? onNavigateToTab;
+
+  const SettingsTab({
+    super.key,
+    this.onNavigateToTab,
+  });
 
   @override
   State<SettingsTab> createState() => _SettingsTabState();
@@ -266,15 +273,9 @@ class _SettingsTabState extends State<SettingsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
-                      const Text(
-                        'Pamasahe',
-                        style: TextStyle(
-                          color: AppColors.deepGreen,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
+                      // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
+                      const PamasaheTopBar(
+                        isSettingsActive: true,
                       ),
 
                       const SizedBox(height: 16),
@@ -323,6 +324,11 @@ class _SettingsTabState extends State<SettingsTab> {
 
                       // 4. SAVED PLACES CARD (Interactive Map + Place List)
                       _buildSavedPlacesCard(context, state, places, isTablet),
+
+                      const SizedBox(height: 20),
+
+                      // 4.1 SUPABASE CLOUD SYNC & BACKUP CARD
+                      _buildSupabaseCloudCard(context, state),
 
                       const SizedBox(height: 20),
 
@@ -485,6 +491,196 @@ class _SettingsTabState extends State<SettingsTab> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // --- SUPABASE CLOUD CARD ---
+  Widget _buildSupabaseCloudCard(BuildContext context, AppState state) {
+    final isAuthed = state.isCloudAuthenticated;
+    final isSyncing = state.isCloudSyncing;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF165B47).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.cloud_sync_rounded, color: Color(0xFF165B47), size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'CLOUD SYNC',
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              color: Color(0xFF165B47),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          Text(
+                            'Supabase Cloud Backup',
+                            style: TextStyle(
+                              color: Color(0xFF111827),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isAuthed ? const Color(0xFFDCFCE7) : const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 7,
+                      color: isAuthed ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isAuthed ? 'Connected' : 'Offline Mode',
+                      style: TextStyle(
+                        color: isAuthed ? const Color(0xFF15803D) : const Color(0xFF6B7280),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isAuthed
+                ? 'Linked Account: ${state.cloudUserEmail}\nRoutes, places, and trip ledgers stay synchronized with PostgreSQL cloud storage.'
+                : 'Sign in to back up your personal commute routes and access community-shared Davao City transit paths.',
+            style: const TextStyle(
+              color: Color(0xFF4B5563),
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isAuthed) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: isSyncing
+                        ? null
+                        : () async {
+                            final res = await state.backupToSupabase();
+                            if (context.mounted) {
+                              if (res.success) {
+                                NotificationBanner.showSuccess(context, res.message);
+                              } else {
+                                NotificationBanner.showError(context, res.message);
+                              }
+                            }
+                          },
+                    icon: isSyncing
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.cloud_upload_rounded, size: 16),
+                    label: const Text('Backup Now', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF165B47),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isSyncing
+                        ? null
+                        : () async {
+                            final res = await state.restoreFromSupabase();
+                            if (context.mounted) {
+                              if (res.success) {
+                                NotificationBanner.showSuccess(context, res.message);
+                              } else {
+                                NotificationBanner.showError(context, res.message);
+                              }
+                            }
+                          },
+                    icon: const Icon(Icons.cloud_download_rounded, size: 16),
+                    label: const Text('Restore', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF374151),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const AuthScreen()),
+                  );
+                },
+                icon: const Icon(Icons.lock_open_rounded, size: 16),
+                label: const Text('Connect Supabase Account', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF165B47),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

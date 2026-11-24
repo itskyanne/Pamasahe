@@ -4,6 +4,7 @@ import '../../models/saved_route.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/currency_format.dart';
+import '../../widgets/pamasahe_top_bar.dart';
 import '../history/log_trip_screen.dart';
 import '../routes/route_detail_screen.dart';
 
@@ -379,15 +380,9 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
-                  const Text(
-                    'Pamasahe',
-                    style: TextStyle(
-                      color: AppColors.deepGreen,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
+                  PamasaheTopBar(
+                    onSettingsTap: () => widget.onNavigateToTab?.call(4),
                   ),
 
                   const SizedBox(height: 16),
@@ -716,80 +711,42 @@ class _HomeTabState extends State<HomeTab> {
       subtitle: 'per commute',
     );
 
-    final savingsCard = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFD6F5E3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFBCEBD0), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'Total saved',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF165B47),
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'with student fare',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 10,
-                    color: Color(0xFF3B7362),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              CurrencyFormat.format(totalSaved),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.deepGreen,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final savingsCard = _buildMetricCard(
+      label: 'Total saved',
+      value: CurrencyFormat.format(totalSaved),
+      subtitle: 'with student fare',
+      backgroundColor: const Color(0xFFD6F5E3),
+      borderColor: const Color(0xFFBCEBD0),
+      labelColor: const Color(0xFF165B47),
+      valueColor: AppColors.deepGreen,
+      subtitleColor: const Color(0xFF3B7362),
     );
 
     if (isTablet) {
-      return Row(
-        children: [
-          Expanded(child: tripsCard),
-          const SizedBox(width: 10),
-          Expanded(child: avgFareCard),
-          const SizedBox(width: 10),
-          Expanded(child: savingsCard),
-        ],
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: tripsCard),
+            const SizedBox(width: 10),
+            Expanded(child: avgFareCard),
+            const SizedBox(width: 10),
+            Expanded(child: savingsCard),
+          ],
+        ),
       );
     } else {
       return Column(
         children: [
-          Row(
-            children: [
-              Expanded(child: tripsCard),
-              const SizedBox(width: 10),
-              Expanded(child: avgFareCard),
-            ],
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tripsCard),
+                const SizedBox(width: 10),
+                Expanded(child: avgFareCard),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           savingsCard,
@@ -802,13 +759,19 @@ class _HomeTabState extends State<HomeTab> {
     required String label,
     required String value,
     required String subtitle,
+    Color? backgroundColor,
+    Color? borderColor,
+    Color? labelColor,
+    Color? valueColor,
+    Color? subtitleColor,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor ?? Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5ECE8), width: 1),
+        border: Border.all(color: borderColor ?? const Color(0xFFE5ECE8), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -819,13 +782,14 @@ class _HomeTabState extends State<HomeTab> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF5A726E),
+              fontWeight: FontWeight.w600,
+              color: labelColor ?? const Color(0xFF5A726E),
             ),
           ),
           const SizedBox(height: 4),
@@ -833,10 +797,10 @@ class _HomeTabState extends State<HomeTab> {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
+                color: valueColor ?? const Color(0xFF111827),
                 letterSpacing: -0.5,
               ),
             ),
@@ -846,10 +810,10 @@ class _HomeTabState extends State<HomeTab> {
             subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'monospace',
               fontSize: 10,
-              color: Color(0xFF8DA39F),
+              color: subtitleColor ?? const Color(0xFF8DA39F),
             ),
           ),
         ],

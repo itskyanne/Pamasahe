@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import '../../models/transport_line.dart';
 import '../../state/app_scope.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/notification_banner.dart';
+import '../../widgets/pamasahe_top_bar.dart';
 import 'line_detail_screen.dart';
 
 class LinesTab extends StatefulWidget {
-  const LinesTab({super.key});
+  final VoidCallback? onNavigateToSettings;
+
+  const LinesTab({
+    super.key,
+    this.onNavigateToSettings,
+  });
 
   @override
   State<LinesTab> createState() => _LinesTabState();
@@ -16,9 +23,9 @@ class _LinesTabState extends State<LinesTab> {
 
   final List<String> _filters = const [
     'All',
-    'Jeepney',
-    'Bus',
-    'Train',
+    'South',
+    'North',
+    'Loops',
   ];
 
   static const List<Color> _defaultColors = [
@@ -36,6 +43,23 @@ class _LinesTabState extends State<LinesTab> {
     );
   }
 
+  Future<void> _handleCheckOtaUpdates(BuildContext context, AppState state) async {
+    final result = await state.checkAndApplyOtaUpdates();
+    if (context.mounted) {
+      if (result.hasUpdates) {
+        NotificationBanner.showSuccess(
+          context,
+          'Synced ${result.count} Davao transit lines with Supabase OTA Matrix (${result.version})!',
+        );
+      } else {
+        NotificationBanner.showInfo(
+          context,
+          'Transit lines directory is already up to date.',
+        );
+      }
+    }
+  }
+
   String _getLineCode(TransportLine line, int index) {
     if (line.code != null && line.code!.isNotEmpty) {
       return line.code!;
@@ -46,12 +70,8 @@ class _LinesTabState extends State<LinesTab> {
 
   String _getRideTypeLabel(TransportLine line) {
     final lower = line.rideType.toLowerCase();
-    if (lower.contains('train')) return 'TRAIN';
-    if (lower.contains('bus')) return 'BUS';
-    if (lower.contains('jeep')) return 'JEEPNEY';
-    if (lower.contains('trike') || lower.contains('tricycle')) return 'TRICYCLE';
-    if (lower.contains('uv')) return 'UV EXPRESS';
-    return line.rideType.toUpperCase();
+    if (lower.contains('modern') || lower.contains('e-jeep')) return 'MODERN JEEP';
+    return 'JEEPNEY';
   }
 
   String _getRouteCoverage(TransportLine line) {
@@ -86,20 +106,48 @@ class _LinesTabState extends State<LinesTab> {
   List<TransportLine> _filterLines(List<TransportLine> allLines) {
     if (_selectedFilter == 'All') return allLines;
 
-    final filterLower = _selectedFilter.toLowerCase();
-    return allLines.where((line) {
-      final typeLower = line.rideType.toLowerCase();
-      if (filterLower == 'train') {
-        return typeLower.contains('train') || line.name.toLowerCase().contains('train');
-      }
-      if (filterLower == 'bus') {
-        return typeLower.contains('bus');
-      }
-      if (filterLower == 'jeepney') {
-        return typeLower.contains('jeep');
-      }
-      return typeLower == filterLower;
-    }).toList();
+    if (_selectedFilter == 'Loops') {
+      return allLines
+          .where((l) =>
+              l.isLoop ||
+              l.name.toLowerCase().contains('loop') ||
+              l.name.toLowerCase().contains('route'))
+          .toList();
+    }
+    if (_selectedFilter == 'South') {
+      return allLines.where((l) {
+        if (l.isLoop) return false;
+        final name = l.name.toLowerCase();
+        final via = l.via.toLowerCase();
+        final origin = l.origin.toLowerCase();
+        return name.contains('toril') ||
+            name.contains('mintal') ||
+            name.contains('calinan') ||
+            name.contains('catalunan') ||
+            name.contains('matina') ||
+            name.contains('bangkal') ||
+            name.contains('maa') ||
+            via.contains('mcarthur') ||
+            origin.contains('toril');
+      }).toList();
+    }
+    if (_selectedFilter == 'North') {
+      return allLines.where((l) {
+        if (l.isLoop) return false;
+        final name = l.name.toLowerCase();
+        return name.contains('panacan') ||
+            name.contains('sasa') ||
+            name.contains('bunawan') ||
+            name.contains('lasang') ||
+            name.contains('tibungco') ||
+            name.contains('buhangin') ||
+            name.contains('cabantian') ||
+            name.contains('el rio') ||
+            name.contains('mandug') ||
+            name.contains('tigatto');
+      }).toList();
+    }
+    return allLines;
   }
 
   @override
@@ -130,22 +178,16 @@ class _LinesTabState extends State<LinesTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. TOP HEADER (Minimal Pamasahe wordmark bar)
-                  const Text(
-                    'Pamasahe',
-                    style: TextStyle(
-                      color: AppColors.deepGreen,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  // 1. TOP HEADER (Pamasahe wordmark + User Avatar)
+                  PamasaheTopBar(
+                    onSettingsTap: widget.onNavigateToSettings,
                   ),
 
                   const SizedBox(height: 16),
 
                   // 2. PAGE HEADER
                   const Text(
-                    'PUBLIC TRANSPORT',
+                    'DAVAO JEEPNEY NETWORK',
                     style: TextStyle(
                       fontFamily: 'monospace',
                       color: Color(0xFF165B47),
@@ -157,26 +199,53 @@ class _LinesTabState extends State<LinesTab> {
 
                   const SizedBox(height: 4),
 
-                  const Text(
-                    'Lines',
-                    style: TextStyle(
-                      color: Color(0xFF111827),
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.9,
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  const Text(
-                    'Browse nearby transport lines and check their current service status.',
-                    style: TextStyle(
-                      color: Color(0xFF5A726E),
-                      fontSize: 14,
-                      height: 1.35,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Lines',
+                              style: TextStyle(
+                                color: Color(0xFF111827),
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.9,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Browse Davao City jeepney routes, major stops, and LTFRB fares.',
+                              style: TextStyle(
+                                color: Color(0xFF5A726E),
+                                fontSize: 14,
+                                height: 1.35,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: state.isCloudSyncing ? null : () => _handleCheckOtaUpdates(context, state),
+                        icon: state.isCloudSyncing
+                            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.mainGreen))
+                            : const Icon(Icons.sync_rounded, size: 15, color: AppColors.mainGreen),
+                        label: const Text(
+                          'Sync Fares',
+                          style: TextStyle(color: AppColors.mainGreen, fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 18),

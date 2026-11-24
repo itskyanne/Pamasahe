@@ -5,6 +5,7 @@ import '../models/saved_place.dart';
 import '../models/saved_route.dart';
 import '../models/transport_line.dart';
 import '../models/trip.dart';
+import '../services/supabase_service.dart';
 
 enum DiscountType {
   none,
@@ -18,10 +19,16 @@ class AppState extends ChangeNotifier {
   double _weeklyBudget = 150.00;
   double _monthlyBudget = 600.00;
 
-  String _userName = 'Dwayne Paulino';
+  String _userName = 'Wacky Paulino';
   String _userSubtitle = 'Student commuter · Member since 2026';
   bool _tripReminders = true;
   bool _weeklySummary = false;
+
+  // Supabase Cloud State
+  String? _cloudUserEmail = 'dwayne.paulino@gmail.com';
+  String? _cloudUserId = 'usr_dwayne_2026';
+  DateTime? _lastCloudSync = DateTime.now();
+  bool _isCloudSyncing = false;
 
   List<SavedPlace> _savedPlaces = [];
   List<SavedRoute> _routes = [];
@@ -73,6 +80,89 @@ class AppState extends ChangeNotifier {
   void setWeeklySummary(bool value) {
     _weeklySummary = value;
     notifyListeners();
+  }
+
+  // Supabase Cloud Sync & Auth Getters
+  String? get cloudUserEmail => _cloudUserEmail;
+  String? get cloudUserId => _cloudUserId;
+  DateTime? get lastCloudSync => _lastCloudSync;
+  bool get isCloudSyncing => _isCloudSyncing;
+  bool get isCloudAuthenticated => _cloudUserEmail != null && _cloudUserEmail!.isNotEmpty;
+
+  void setCloudUser(String? email, String? id) {
+    _cloudUserEmail = email;
+    _cloudUserId = id;
+    notifyListeners();
+  }
+
+  void signOutCloud() {
+    _cloudUserEmail = null;
+    _cloudUserId = null;
+    notifyListeners();
+  }
+
+  Future<({bool success, String message})> backupToSupabase() async {
+    _isCloudSyncing = true;
+    notifyListeners();
+
+    final result = await SupabaseService().backupUserData(
+      routes: _routes,
+      trips: _trips,
+      places: _savedPlaces,
+      userEmail: _cloudUserEmail,
+    );
+
+    _isCloudSyncing = false;
+    if (result.success) {
+      _lastCloudSync = DateTime.now();
+    }
+    notifyListeners();
+    return (success: result.success, message: result.message);
+  }
+
+  Future<({bool success, String message})> restoreFromSupabase() async {
+    _isCloudSyncing = true;
+    notifyListeners();
+
+    final result = await SupabaseService().restoreUserData();
+
+    _isCloudSyncing = false;
+    if (result.success) {
+      if (result.routes.isNotEmpty) {
+        _routes = result.routes;
+      }
+      if (result.trips.isNotEmpty) {
+        _trips = result.trips;
+      }
+      _lastCloudSync = DateTime.now();
+    }
+    notifyListeners();
+    return (success: result.success, message: result.message);
+  }
+
+  Future<({bool hasUpdates, String version, int count})> checkAndApplyOtaUpdates() async {
+    _isCloudSyncing = true;
+    notifyListeners();
+
+    final result = await SupabaseService().checkOtaFareUpdates();
+    if (result.hasUpdates && result.updatedLines.isNotEmpty) {
+      for (final updated in result.updatedLines) {
+        final idx = _lines.indexWhere((l) => l.code == updated.code);
+        if (idx != -1) {
+          _lines[idx] = updated;
+        } else {
+          _lines.add(updated);
+        }
+      }
+    }
+
+    _isCloudSyncing = false;
+    notifyListeners();
+    return (
+      hasUpdates: result.hasUpdates,
+      version: result.version,
+      count: result.updatedLines.length,
+    );
   }
 
   // Concessions & Budgets
