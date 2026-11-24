@@ -343,6 +343,7 @@ class _HistoryTabState extends State<HistoryTab> {
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 600;
             final horizontalPadding = isTablet ? 24.0 : 16.0;
+            final isDark = Theme.of(context).brightness == Brightness.dark;
 
             return Align(
               alignment: Alignment.topCenter,
@@ -366,11 +367,11 @@ class _HistoryTabState extends State<HistoryTab> {
                       const SizedBox(height: 16),
 
                       // 2. PAGE HEADER
-                      const Text(
+                      Text(
                         'TRIP LOG',
                         style: TextStyle(
                           fontFamily: 'monospace',
-                          color: Color(0xFF165B47),
+                          color: isDark ? AppColors.darkMainGreen : const Color(0xFF165B47),
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
@@ -379,20 +380,20 @@ class _HistoryTabState extends State<HistoryTab> {
 
                       const SizedBox(height: 4),
 
-                      const Text(
+                      Text(
                         'History',
                         style: TextStyle(
-                          color: Color(0xFF111827),
+                          color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.9,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Review your past commutes, fares, and student savings.',
                         style: TextStyle(
-                          color: Color(0xFF4B5563),
+                          color: isDark ? AppColors.darkTextSecondary : const Color(0xFF4B5563),
                           fontSize: 14,
                           height: 1.4,
                         ),
@@ -404,12 +405,15 @@ class _HistoryTabState extends State<HistoryTab> {
                       Container(
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? AppColors.darkSurfaceCard : Colors.white,
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+                          border: Border.all(
+                            color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB),
+                            width: 1.0,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
@@ -731,25 +735,42 @@ class _HistoryTabState extends State<HistoryTab> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedBg = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final selectedText = isDark ? const Color(0xFF111827) : Colors.white;
+    final unselectedBg = isDark ? AppColors.darkSurfaceCard : Colors.white;
+    final unselectedBorder = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+    final unselectedText = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      splashColor: isSelected ? Colors.white.withValues(alpha: 0.2) : AppColors.mainGreen.withValues(alpha: 0.1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8.5),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF111827) : Colors.white,
+          color: isSelected ? selectedBg : unselectedBg,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: isSelected ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+            color: isSelected ? selectedBg : unselectedBorder,
             width: 1.0,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 1.5),
+            ),
+          ],
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF111827),
+            color: isSelected ? selectedText : unselectedText,
             fontSize: 13,
             fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -776,18 +797,22 @@ class _HistoryTabState extends State<HistoryTab> {
     final vehicle = trip.vehicle;
     final dateUpper = trip.date.toUpperCase();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurfaceCard : Colors.white;
+    final cardBorder = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+
     return InkWell(
       onTap: () => _showTripDetailSheet(context, trip, state),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+          border: Border.all(color: cardBorder, width: 1.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -820,8 +845,8 @@ class _HistoryTabState extends State<HistoryTab> {
                 children: [
                   Text(
                     trip.routeName,
-                    style: const TextStyle(
-                      color: Color(0xFF111827),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
                       fontWeight: FontWeight.w700,
                       fontSize: 15.5,
                       letterSpacing: -0.3,
@@ -832,9 +857,9 @@ class _HistoryTabState extends State<HistoryTab> {
                   const SizedBox(height: 4),
                   Text(
                     '$vehicle  ·  $dateUpper',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'monospace',
-                      color: Color(0xFF6B7280),
+                      color: isDark ? AppColors.darkTextSecondary : const Color(0xFF6B7280),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.4,
@@ -851,8 +876,8 @@ class _HistoryTabState extends State<HistoryTab> {
             // Bold fare
             Text(
               CurrencyFormat.format(trip.amount),
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
                 fontWeight: FontWeight.w800,
                 fontSize: 16.5,
                 letterSpacing: -0.3,
