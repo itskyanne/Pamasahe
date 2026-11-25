@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/trip.dart';
 import '../../state/app_scope.dart';
@@ -22,6 +23,8 @@ class HistoryTab extends StatefulWidget {
 class _HistoryTabState extends State<HistoryTab> {
   // 0 = This week, 1 = This month (default per screenshots), 2 = All
   int _selectedFilter = 1;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   // Baseline November trip records from earlier in the month
   // Sum = 297.20 across 14 trips, which when added to the 4 initial trips (89.60)
@@ -330,13 +333,20 @@ class _HistoryTabState extends State<HistoryTab> {
     final state = AppStateScope.of(context);
     final visibleTrips = _getVisibleTrips(state);
 
-    // Dynamic calculations
+    // Dynamic calculations across whole filtered timeframe
     final totalSpent = visibleTrips.fold(0.0, (sum, trip) => sum + trip.amount);
     final totalTrips = visibleTrips.length;
     final totalSaved = state.hasDiscount ? (totalSpent * 0.25) : 0.0;
 
+    // Pagination calculations (5 trips per page)
+    final totalPages = (totalTrips / _itemsPerPage).ceil().clamp(1, 999);
+    final currentPage = _currentPage.clamp(1, totalPages);
+    final startIndex = (currentPage - 1) * _itemsPerPage;
+    final endIndex = math.min(startIndex + _itemsPerPage, totalTrips);
+    final paginatedTrips = totalTrips == 0 ? <Trip>[] : visibleTrips.sublist(startIndex, endIndex);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -629,19 +639,28 @@ class _HistoryTabState extends State<HistoryTab> {
                                   _buildFilterPill(
                                     label: 'This week',
                                     isSelected: _selectedFilter == 0,
-                                    onTap: () => setState(() => _selectedFilter = 0),
+                                    onTap: () => setState(() {
+                                      _selectedFilter = 0;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                   const SizedBox(width: 8),
                                   _buildFilterPill(
                                     label: 'This month',
                                     isSelected: _selectedFilter == 1,
-                                    onTap: () => setState(() => _selectedFilter = 1),
+                                    onTap: () => setState(() {
+                                      _selectedFilter = 1;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                   const SizedBox(width: 8),
                                   _buildFilterPill(
                                     label: 'All',
                                     isSelected: _selectedFilter == 2,
-                                    onTap: () => setState(() => _selectedFilter = 2),
+                                    onTap: () => setState(() {
+                                      _selectedFilter = 2;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                 ],
                               ),
@@ -703,28 +722,249 @@ class _HistoryTabState extends State<HistoryTab> {
                             ],
                           ),
                         )
-                      else
+                      else ...[
                         ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: visibleTrips.length,
+                          itemCount: paginatedTrips.length,
                           separatorBuilder: (context, index) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final trip = visibleTrips[index];
+                            final trip = paginatedTrips[index];
+                            final globalIndex = startIndex + index;
                             return _buildTripCard(
                               context: context,
                               trip: trip,
-                              index: index,
+                              index: globalIndex,
                               state: state,
                             );
                           },
                         ),
+                        if (totalTrips > 0) ...[
+                          const SizedBox(height: 20),
+                          _buildPaginationControls(
+                            context: context,
+                            currentPage: currentPage,
+                            totalPages: totalPages,
+                            startIndex: startIndex,
+                            endIndex: endIndex,
+                            totalItems: totalTrips,
+                            isDark: isDark,
+                            onPageChanged: (newPage) {
+                              setState(() => _currentPage = newPage);
+                            },
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls({
+    required BuildContext context,
+    required int currentPage,
+    required int totalPages,
+    required int startIndex,
+    required int endIndex,
+    required int totalItems,
+    required bool isDark,
+    required ValueChanged<int> onPageChanged,
+  }) {
+    final textColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF6B7280);
+    final surfaceColor = isDark ? AppColors.darkSurfaceCard : Colors.white;
+    final borderColor = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+    final primaryActiveBg = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final primaryActiveText = isDark ? const Color(0xFF111827) : Colors.white;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Range and page summary line
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  'Showing ${startIndex + 1}–$endIndex of $totalItems trips',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    color: textColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Page $currentPage of $totalPages',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  color: textColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+          if (totalPages > 1) ...[
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Previous button
+                  _buildPaginationArrowButton(
+                    key: const ValueKey('history_pagination_prev'),
+                    icon: Icons.chevron_left_rounded,
+                    label: 'Previous page',
+                    isEnabled: currentPage > 1,
+                    isDark: isDark,
+                    onTap: () => onPageChanged(currentPage - 1),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // Numbered page pills
+                  ...List.generate(totalPages, (i) {
+                    final page = i + 1;
+                    final isSelected = page == currentPage;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                      child: Semantics(
+                        button: true,
+                        label: 'Go to page $page',
+                        selected: isSelected,
+                        child: InkWell(
+                          key: ValueKey('history_page_$page'),
+                          onTap: () => onPageChanged(page),
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isSelected ? primaryActiveBg : surfaceColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected ? primaryActiveBg : borderColor,
+                                width: 1.0,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1.5),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$page',
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? primaryActiveText
+                                      : (isDark ? AppColors.darkTextPrimary : const Color(0xFF111827)),
+                                  fontSize: 13,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(width: 6),
+
+                  // Next button
+                  _buildPaginationArrowButton(
+                    key: const ValueKey('history_pagination_next'),
+                    icon: Icons.chevron_right_rounded,
+                    label: 'Next page',
+                    isEnabled: currentPage < totalPages,
+                    isDark: isDark,
+                    onTap: () => onPageChanged(currentPage + 1),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationArrowButton({
+    required Key key,
+    required IconData icon,
+    required String label,
+    required bool isEnabled,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final borderColor = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+    final activeColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final disabledColor = isDark ? AppColors.darkTextMuted : const Color(0xFF9CA3AF);
+
+    return Semantics(
+      button: true,
+      enabled: isEnabled,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: key,
+          onTap: isEnabled ? onTap : null,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurfaceCard : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isEnabled ? borderColor : borderColor.withValues(alpha: 0.5),
+                width: 1.0,
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                size: 20,
+                color: isEnabled ? activeColor : disabledColor,
+              ),
+            ),
+          ),
         ),
       ),
     );
