@@ -105,5 +105,30 @@ void main() {
       expect(find.text('Showing 1–5 of 18 trips'), findsOneWidget);
       expect(find.text('Page 1 of 4'), findsOneWidget);
     });
+
+    testWidgets('Pagination controls stick directly below the last card without gap', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const PamasaheApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('nav_item_history')));
+      await tester.pumpAndSettle();
+
+      // Find the 5th card ("Home to Library")
+      final lastCard = find.text('Home to Library');
+      expect(lastCard, findsOneWidget);
+
+      final lastCardBottom = tester.getBottomLeft(lastCard).dy;
+      final paginationTop = tester.getTopLeft(find.text('Page 1 of 4')).dy;
+
+      // Distance between last card and pagination bar is within tight normal spacing (~30-60px), NOT 1000px!
+      final distance = paginationTop - lastCardBottom;
+      expect(distance, lessThan(80.0));
+      expect(distance, greaterThan(0.0));
+    });
   });
 }

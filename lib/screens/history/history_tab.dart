@@ -723,24 +723,18 @@ class _HistoryTabState extends State<HistoryTab> {
                           ),
                         )
                       else ...[
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: paginatedTrips.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final trip = paginatedTrips[index];
-                            final globalIndex = startIndex + index;
-                            return _buildTripCard(
-                              context: context,
-                              trip: trip,
-                              index: globalIndex,
-                              state: state,
-                            );
-                          },
-                        ),
+                        // Render trip cards directly in the Column (avoids shrinkWrap ListView layout bloat)
+                        for (int i = 0; i < paginatedTrips.length; i++) ...[
+                          _buildTripCard(
+                            context: context,
+                            trip: paginatedTrips[i],
+                            index: startIndex + i,
+                            state: state,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         if (totalTrips > 0) ...[
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 2),
                           _buildPaginationControls(
                             context: context,
                             currentPage: currentPage,
