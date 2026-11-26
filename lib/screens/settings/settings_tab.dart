@@ -299,49 +299,28 @@ class _SettingsTabState extends State<SettingsTab> {
                       const SizedBox(height: 16),
 
                       // 2. PAGE HEADER
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'YOUR ACCOUNT',
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: isDark ? AppColors.darkMainGreen : const Color(0xFF165B47),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Settings',
-                                  style: TextStyle(
-                                    color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.9,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            'YOUR ACCOUNT',
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              color: isDark ? AppColors.darkMainGreen : const Color(0xFF165B47),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
                             ),
                           ),
-                          ThemeToggleButton(
-                            key: const ValueKey('settings_theme_toggle_header'),
-                            themeMode: state.themeMode,
-                            onToggle: () {
-                              state.toggleThemeMode();
-                              NotificationBanner.showInfo(
-                                context,
-                                state.isDarkMode
-                                    ? 'Switched to Dark Mode (Off-Black & Layered Grays)'
-                                    : 'Switched to Light Mode (Soft White & Charcoal)',
-                              );
-                            },
+                          const SizedBox(height: 4),
+                          Text(
+                            'Settings',
+                            style: TextStyle(
+                              color: isDark ? AppColors.darkTextPrimary : const Color(0xFF111827),
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.9,
+                            ),
                           ),
                         ],
                       ),
@@ -364,24 +343,22 @@ class _SettingsTabState extends State<SettingsTab> {
 
                       const SizedBox(height: 20),
 
-                      // 4. SAVED PLACES CARD (Interactive Map + Place List)
-                      _buildSavedPlacesCard(context, state, places, isTablet),
-
-                      const SizedBox(height: 20),
-
-                      // 4.1 SUPABASE CLOUD SYNC & BACKUP CARD
-                      _buildSupabaseCloudCard(context, state),
-
-                      const SizedBox(height: 20),
-
-                      // 4.2 APPEARANCE CARD (Dark & Light Mode)
+                      // 4. APPEARANCE CARD (Relocated right below profile for quick access)
                       _buildAppearanceCard(context, state),
 
                       const SizedBox(height: 20),
 
+                      // 5. SAVED PLACES CARD (Interactive Map + Place List)
+                      _buildSavedPlacesCard(context, state, places, isTablet),
 
+                      const SizedBox(height: 20),
 
-                      // 5. COMMUTE PREFERENCES & REMINDERS CARDS
+                      // 6. SUPABASE CLOUD SYNC & BACKUP CARD
+                      _buildSupabaseCloudCard(context, state),
+
+                      const SizedBox(height: 20),
+
+                      // 7. COMMUTE PREFERENCES & REMINDERS CARDS
                       if (isTablet)
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,7 +502,50 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            // Tactile theme mode pills
+            Row(
+              children: [
+                Expanded(
+                  child: _buildThemeModePill(
+                    context: context,
+                    title: 'Light Mode',
+                    icon: Icons.light_mode_outlined,
+                    isSelected: !isDark,
+                    isDark: isDark,
+                    onTap: () {
+                      if (isDark) {
+                        state.toggleThemeMode();
+                        NotificationBanner.showInfo(
+                          context,
+                          'Switched to Light Mode (Soft White & Charcoal)',
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildThemeModePill(
+                    context: context,
+                    title: 'Dark Mode',
+                    icon: Icons.dark_mode_outlined,
+                    isSelected: isDark,
+                    isDark: isDark,
+                    onTap: () {
+                      if (!isDark) {
+                        state.toggleThemeMode();
+                        NotificationBanner.showInfo(
+                          context,
+                          'Switched to Dark Mode (Off-Black & Layered Grays)',
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             Text(
               isDark
                   ? 'Off-Black & Soft White layered palette with muted cool grays (#0B0D10 / #16191F / #21252D) to reduce eye fatigue and prevent OLED smearing.'
@@ -534,6 +554,71 @@ class _SettingsTabState extends State<SettingsTab> {
                 color: subtitleColor,
                 fontSize: 13,
                 height: 1.45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeModePill({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final activeBg = isDark ? Colors.white : const Color(0xFF111827);
+    final activeFg = isDark ? const Color(0xFF111827) : Colors.white;
+    final inactiveBg = isDark ? AppColors.darkSurfaceModal : const Color(0xFFF3F4F6);
+    final inactiveFg = isDark ? AppColors.darkTextSecondary : const Color(0xFF4B5563);
+    final borderColor = isSelected
+        ? Colors.transparent
+        : (isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB));
+
+    return InkWell(
+      key: ValueKey('theme_pill_${title.toLowerCase().replaceAll(' ', '_')}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : inactiveBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 1.0),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isSelected ? activeFg : inactiveFg,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isSelected ? activeFg : inactiveFg,
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                ),
               ),
             ),
           ],

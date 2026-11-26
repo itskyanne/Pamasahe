@@ -86,7 +86,7 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('Settings screen contains theme toggle button in header and appearance card, toggling dark mode', (WidgetTester tester) async {
+    testWidgets('Settings screen removes header toggle and toggles theme via appearance card', (WidgetTester tester) async {
       tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -99,19 +99,24 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav_item_settings')));
       await tester.pumpAndSettle();
 
-      // Verify Settings page and Appearance elements exist
+      // Verify Settings page exists and top header toggle has been removed
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.byKey(const ValueKey('settings_theme_toggle_header')), findsOneWidget);
+      expect(find.byKey(const ValueKey('settings_theme_toggle_header')), findsNothing);
 
-      // Tap header theme toggle button
-      await tester.tap(find.byKey(const ValueKey('settings_theme_toggle_header')));
+      // Verify Appearance card toggle and mode pills exist right below Profile Card
+      expect(find.byKey(const ValueKey('settings_appearance_card_toggle')), findsOneWidget);
+      expect(find.byKey(const ValueKey('theme_pill_light_mode')), findsOneWidget);
+      expect(find.byKey(const ValueKey('theme_pill_dark_mode')), findsOneWidget);
+
+      // Tap appearance card theme toggle button
+      await tester.tap(find.byKey(const ValueKey('settings_appearance_card_toggle')));
       await tester.pumpAndSettle();
 
       // Verify Dark Mode active banner or text
       expect(find.textContaining('Dark Mode'), findsWidgets);
 
-      // Tap again to switch back to Light Mode
-      await tester.tap(find.byKey(const ValueKey('settings_theme_toggle_header')));
+      // Tap Light Mode pill to switch back to Light Mode
+      await tester.tap(find.byKey(const ValueKey('theme_pill_light_mode')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Light Mode'), findsWidgets);
