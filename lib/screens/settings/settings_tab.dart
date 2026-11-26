@@ -941,14 +941,20 @@ class _SettingsTabState extends State<SettingsTab> {
     bool isTablet,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurfaceCard : Colors.white;
+    final borderColor = isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB);
+    final titleColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final subtitleColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF6B7280);
+    final tagColor = isDark ? AppColors.darkMainGreen : const Color(0xFF165B47);
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurfaceCard : Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE5E7EB), width: 1.0),
+        border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -960,31 +966,31 @@ class _SettingsTabState extends State<SettingsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Places header
-            const Text(
+            Text(
               'PLACES',
               style: TextStyle(
                 fontFamily: 'monospace',
-                color: Color(0xFF165B47),
+                color: tagColor,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.1,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Your saved places',
               style: TextStyle(
-                color: Color(0xFF111827),
+                color: titleColor,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Save frequent destinations to plan routes and log trips faster.',
               style: TextStyle(
-                color: Color(0xFF6B7280),
+                color: subtitleColor,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -1003,8 +1009,8 @@ class _SettingsTabState extends State<SettingsTab> {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111827),
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? Colors.white : const Color(0xFF111827),
+                  foregroundColor: isDark ? const Color(0xFF111827) : Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999),
@@ -1014,7 +1020,7 @@ class _SettingsTabState extends State<SettingsTab> {
             ),
             const SizedBox(height: 16),
 
-            // Saved places list
+            // Saved places list (direct Column rendering prevents shrinkWrap ListView phantom height)
             _buildPlacesList(context, state, places),
           ],
         ),
@@ -1024,98 +1030,119 @@ class _SettingsTabState extends State<SettingsTab> {
 
   // --- PLACES LIST ---
   Widget _buildPlacesList(BuildContext context, AppState state, List<SavedPlace> places) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: places.length,
-      separatorBuilder: (context, index) => const Divider(
-        color: Color(0xFFF3F4F6),
-        height: 1,
-        indent: 52,
-      ),
-      itemBuilder: (context, index) {
-        final place = places[index];
-        final isSelected = index == _selectedPlaceIndex;
+    if (places.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-        return InkWell(
-          onTap: () {
-            setState(() => _selectedPlaceIndex = index);
-            _openMapPlacePicker(context, initialPlace: place, isViewOnly: false);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFF0FDF4) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dividerColor = isDark ? AppColors.darkBorderSubtle : const Color(0xFFF3F4F6);
+
+    return Column(
+      children: [
+        for (int index = 0; index < places.length; index++) ...[
+          _buildPlaceItem(context, state, places[index], index, isDark),
+          if (index < places.length - 1)
+            Divider(
+              color: dividerColor,
+              height: 1,
+              indent: 52,
             ),
-            child: Row(
-              children: [
-                // Color-coded category squircle
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: place.color,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      place.icon,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
+        ],
+      ],
+    );
+  }
 
-                // Name and address
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        place.displayTitle,
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        place.address,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
+  Widget _buildPlaceItem(
+    BuildContext context,
+    AppState state,
+    SavedPlace place,
+    int index,
+    bool isDark,
+  ) {
+    final isSelected = index == _selectedPlaceIndex;
+    final titleColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF111827);
+    final subtitleColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF6B7280);
+    final selectedBg = isDark
+        ? AppColors.darkMainGreen.withValues(alpha: 0.14)
+        : const Color(0xFFF0FDF4);
 
-                const SizedBox(width: 6),
-                IconButton(
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: Color(0xFF6B7280),
-                    size: 19,
-                  ),
-                  tooltip: 'Edit place',
-                  onPressed: () {
-                    setState(() => _selectedPlaceIndex = index);
-                    _openMapPlacePicker(context, initialPlace: place, isViewOnly: false);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedPlaceIndex = index);
+        _openMapPlacePicker(context, initialPlace: place, isViewOnly: false);
       },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? selectedBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            // Color-coded category squircle
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: place.color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Icon(
+                  place.icon,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Name and address
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    place.displayTitle,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    place.address,
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 6),
+            IconButton(
+              icon: Icon(
+                Icons.edit_outlined,
+                color: subtitleColor,
+                size: 19,
+              ),
+              tooltip: 'Edit place',
+              onPressed: () {
+                setState(() => _selectedPlaceIndex = index);
+                _openMapPlacePicker(context, initialPlace: place, isViewOnly: false);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

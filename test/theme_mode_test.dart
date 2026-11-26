@@ -121,5 +121,32 @@ void main() {
 
       expect(find.textContaining('Light Mode'), findsWidgets);
     });
+
+    testWidgets('Saved places list does not have phantom gap below last item', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const PamasaheApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('nav_item_settings')));
+      await tester.pumpAndSettle();
+
+      final lastPlace = find.text('City Library');
+      expect(lastPlace, findsOneWidget);
+
+      final cloudSync = find.text('Supabase Cloud Backup');
+      expect(cloudSync, findsOneWidget);
+
+      final lastPlaceBottom = tester.getBottomLeft(lastPlace).dy;
+      final cloudSyncTop = tester.getTopLeft(cloudSync).dy;
+
+      // Distance between last saved place and cloud sync card is tight normal spacing (~100px), not 1000px
+      final distance = cloudSyncTop - lastPlaceBottom;
+      expect(distance, lessThan(150.0));
+      expect(distance, greaterThan(0.0));
+    });
   });
 }
