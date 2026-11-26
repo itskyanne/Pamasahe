@@ -589,6 +589,9 @@ The development lifecycle of Pamasahe follows a structured 14-week timeline span
 | **Phase 6: Testing & QA** | 6.1 Comprehensive unit test suite (`pamasahe_test.dart`)<br>6.2 Widget UI & navigation tests (`widget_test.dart`)<br>6.3 Commuter pilot testing, bug fixes & final report | 2 Weeks | Week 13 - Week 14 | Phase 5 |
 
 ### Timeline Gantt Visualization (14-Week Schedule)
+
+![Figure 2.1: Pamasahe 14-Week Project Development Gantt Chart](../diagrams/chapter_2_gantt_chart.png)
+
 ```text
 PROJECT PHASES                  | W01 | W02 | W03 | W04 | W05 | W06 | W07 | W08 | W09 | W10 | W11 | W12 | W13 | W14 |
 --------------------------------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
